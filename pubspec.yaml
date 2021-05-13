@@ -17,6 +17,7 @@ dependencies:
   web_socket_channel: ">=2.1.0 <3.0.0"
 
 dev_dependencies:
+  # test: "<1.17.0" # use the version below 1.17.0 to avoid clashes with flutter_test
   flutter_test:
     sdk: flutter
 
