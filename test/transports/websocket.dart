@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import 'package:appia/transports/transports.dart';
-import 'package:appia/transports/websocket.dart';
+import 'package:appia/p2p/transports/transports.dart';
+import 'package:appia/p2p/transports/evented_connection.dart';
+import 'package:appia/p2p/transports/websocket.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() async {
@@ -12,8 +13,10 @@ void main() async {
       // dial and sender
       () async {
         try {
-          var listener = await transport.listen(
-              InternetAddress.tryParse("127.0.0.1")!, 8080);
+          var listener = await transport.listen(WsListeningAddress(
+            InternetAddress.tryParse("127.0.0.1")!,
+            8080,
+          ));
           var conn =
               new EventedConnection(await listener.incomingConnections.first);
           var msg = await conn.messageStream.first;
@@ -24,10 +27,10 @@ void main() async {
       }(), // closures are called right away
       // listen and recieve
       () async {
-        var conn = new EventedConnection(
-            await transport.dial(Uri.parse("ws://127.0.0.1:8080")));
+        var conn = new EventedConnection(await transport
+            .dial(WsPeerAddress(Uri.parse("ws://127.0.0.1:8080"))));
         // FIXME: this seems emit even when no connection's established
-        await conn.emit(AppiaMessage("echo", "hello"));
+        await conn.emit(EventMessage("echo", "hello"));
         await conn.close(new CloseReason(code: CloseCode.GoingAway));
       }(),
     ]).onError((error, stackTrace) {

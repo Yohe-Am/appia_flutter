@@ -1,44 +1,174 @@
+import 'dart:io';
+
+import 'package:appia/p2p/transports/transports.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'blocs/p2p/p2p.dart';
+import 'p2p/p2p.dart';
 
 void main() {
+  // use this async iife to set up a dumb echo server on the local machine
+  // for testing
+  () async {
+    try {
+      var transport = new WsTransport();
+      var listener = await transport.listen(
+        WsListeningAddress(
+          InternetAddress.tryParse("127.0.0.1")!,
+          8088,
+        ),
+      );
+      listener.incomingConnections
+          .map((conn) => new EventedConnection(
+                conn,
+                onMessage: (_, msg) {
+                  print("got message ${msg.toJson()}");
+                },
+              ))
+          .forEach((conn) => conn.listen(
+                "echo",
+                (connection, data) =>
+                    connection.emit(EventMessage("echo", data)),
+              ));
+    } catch (err) {
+      print("err seting up dumb server: $err");
+    }
+  }();
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+/// Namester that always returns the same peerAddress
+class DumbNamester extends AbstractNamester {
+  final PeerAddress universalAddress;
+
+  DumbNamester(this.universalAddress);
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+  Future<PeerAddress?> getAddress(AppiaId id) async {
+    return this.universalAddress;
+  }
+
+  @override
+  Future<void> updateMyAddress(AppiaId id, PeerAddress address) async {}
+}
+
+enum DemoState { Connected, Connecting, NotConnected }
+
+/// Cubit for controlling the demo connection
+class DemoConnectionCubit extends Cubit<DemoState> {
+  final AbstractTransport tport;
+  ConnectionBloc? connBloc;
+  DemoConnectionCubit()
+      : tport = WsTransport(),
+        super(DemoState.NotConnected);
+
+  void connect(WsPeerAddress addr) {
+    this.tport.dial(addr).then(
+      (conn) {
+        this.connBloc = ConnectionBloc(conn);
+        emit(DemoState.Connected);
+      },
+      onError: (error, stackTrace) {
+        print(
+            "err dialing to address (${addr.toString()}): $error\n$stackTrace");
+        emit(DemoState.NotConnected);
+      },
     );
   }
 }
 
+class Messages {
+  final List<String> messages;
+
+  Messages(this.messages);
+}
+
+// i hate it
+// something's broken how something's set up
+// hmm
+// I guess this fellow is enterprising as a little repository
+class DemoMessagesCubit extends Cubit<Messages> {
+  final DemoConnectionCubit connCubit;
+
+  DemoMessagesCubit(this.connCubit) : super(Messages([])) {
+    this.connCubit.stream.listen((event) {
+      if (event == DemoState.Connected) {
+        connCubit.connBloc!.eventedConnection.onMessage = (_, msg) {
+          this._addMessage("incoming " + msg.toJson());
+        };
+      }
+    });
+  }
+  void sendMessage(EventMessage<dynamic> msg) {
+    this
+        .connCubit
+        .connBloc!
+        .eventedConnection
+        .emit(msg)
+        .then((v) => this._addMessage("outgoing: " + msg.toJson()));
+  }
+
+  void _addMessage(String s) {
+    final state = this.state;
+    state.messages.add(s);
+    emit(Messages(state.messages));
+  }
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      // provide repositorys first
+      MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider(
+              create: (context) {
+                final transport = new WsTransport();
+                final bloc = new P2PBloc(
+                  P2PNode(
+                    DumbNamester(
+                      WsPeerAddress(Uri.parse("ws://127.0.0.1:8080")),
+                    ),
+                    tports: [WsTransport()],
+                  ),
+                );
+                transport
+                    .listen(WsListeningAddress(
+                      InternetAddress.tryParse("127.0.0.1")!,
+                      8080,
+                    ))
+                    .then((listener) => bloc.node.addListener(listener))
+                    .onError(
+                  (error, stackTrace) {
+                    print(
+                        "error establishing node listener: $error\n$stackTrace");
+                  },
+                );
+                return bloc;
+              },
+            ),
+          ],
+          // then come the blocs
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (context) => DemoConnectionCubit()),
+              BlocProvider(
+                create: (context) =>
+                    DemoMessagesCubit(context.read<DemoConnectionCubit>()),
+              )
+            ],
+            child: MaterialApp(
+              title: 'Appia Demo',
+              theme: ThemeData(
+                primarySwatch: Colors.pink,
+              ),
+              home: MyHomePage(title: 'Appia Demo'),
+            ),
+          ));
+}
+
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key? key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String? title;
 
   @override
@@ -46,68 +176,178 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  final _connectFormKey = GlobalKey<FormState>();
+  final _msgformKey = GlobalKey<FormState>();
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  String _event = "echo";
+  String _message = "hello appia";
+
+  String _peerHost = "127.0.0.1";
+  int _peerPort = 8088;
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title!),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+        title: BlocBuilder<DemoConnectionCubit, DemoState>(
+          builder: (context, state) => state == DemoState.Connected
+              ? Text("Connected")
+              : state == DemoState.Connecting
+                  ? Text("Connecting")
+                  : Text("Not Connected"),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Form(
+            key: this._connectFormKey,
+            child: BlocBuilder<DemoConnectionCubit, DemoState>(
+              builder: (context, state) => Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      enabled: state == DemoState.NotConnected,
+                      initialValue: this._peerHost,
+                      onSaved: (value) {
+                        if (value != null)
+                          setState(() {
+                            this._peerHost = value;
+                          });
+                      },
+                      validator: (host) {
+                        if (host == null || host.isEmpty) {
+                          return "Host field is empty.";
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  Container(
+                    width: 75,
+                    child: TextFormField(
+                      enabled: state == DemoState.NotConnected,
+                      initialValue: this._peerPort.toString(),
+                      onSaved: (value) {
+                        if (value != null)
+                          setState(() {
+                            this._peerPort = int.parse(value);
+                          });
+                      },
+                      validator: (port) {
+                        if (port == null || port.isEmpty) {
+                          return "Port field is empty.";
+                        }
+                        if (int.tryParse(port) == null) {
+                          return "Port field is invalid.";
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  state == DemoState.NotConnected
+                      ? ElevatedButton(
+                          onPressed: () {
+                            final form = this._msgformKey.currentState;
+                            if (form != null && form.validate()) {
+                              form.save();
+                              context.read<DemoConnectionCubit>().connect(
+                                    WsPeerAddress(
+                                      Uri(
+                                          scheme: "ws",
+                                          host: this._peerHost,
+                                          port: this._peerPort),
+                                    ),
+                                  );
+                            }
+                          },
+                          child: const Text("Connect"),
+                        )
+                      : state == DemoState.Connected
+                          ? ElevatedButton(
+                              onPressed: () {
+                                // TODO:
+                              },
+                              child: const Text("Disconnect"),
+                            )
+                          : ElevatedButton(
+                              onPressed: null, child: const Text("Wait")),
+                ],
+              ),
+            ),
+          ),
+          Text(
+            'Messages:',
+          ),
+          Expanded(
+            child: BlocBuilder<DemoMessagesCubit, Messages>(
+              builder: (context, state) => ListView.builder(
+                itemCount: state.messages.length,
+                itemBuilder: (context, index) => Text(state.messages[index]),
+              ),
+            ),
+          ),
+          Form(
+            key: this._msgformKey,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        initialValue: this._event,
+                        onSaved: (value) {
+                          if (value != null)
+                            setState(() {
+                              this._event = value;
+                            });
+                        },
+                        validator: (msg) {
+                          if (msg == null || msg.isEmpty) {
+                            return "Event field is empty.";
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        initialValue: this._message,
+                        onSaved: (value) {
+                          if (value != null)
+                            setState(() {
+                              this._message = value;
+                            });
+                        },
+                        validator: (msg) {
+                          if (msg == null || msg.isEmpty) {
+                            return "Message field is empty.";
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                BlocBuilder<DemoConnectionCubit, DemoState>(
+                  builder: (context, state) => ElevatedButton(
+                    onPressed: state == DemoState.Connected
+                        ? () {
+                            final form = this._msgformKey.currentState;
+                            if (form != null && form.validate()) {
+                              form.save();
+                              context.read<DemoMessagesCubit>().sendMessage(
+                                    EventMessage(this._event, this._message),
+                                  );
+                            }
+                          }
+                        : null,
+                    child: const Text("Send"),
+                  ),
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
     );
   }
 }

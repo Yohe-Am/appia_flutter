@@ -1,4 +1,3 @@
-// TODO: test this
 // Yohe: I just copied the client we used from offTime and made it null-safe. Lot's of work left to be done
 
 import 'dart:io';
@@ -6,36 +5,76 @@ import 'dart:io';
 import 'package:web_socket_channel/web_socket_channel.dart' as ws_channel;
 import 'package:web_socket_channel/io.dart' as ws_channel_io;
 import 'package:web_socket_channel/status.dart' as ws_status;
-import 'package:appia/transports/transports.dart';
+
+import 'transports.dart';
+
+class WsListeningAddress extends ListeningAddress {
+  final InternetAddress host;
+  final int port;
+  final String path;
+  const WsListeningAddress(
+    this.host,
+    this.port, [
+    this.path = "/",
+  ]) : super(TransportType.WebSockets);
+  @override
+  String toString() => "WsListeningAddress(${host.toString()}:$port$path)";
+}
+
+class WsPeerAddress extends PeerAddress {
+  final Uri uri;
+  WsPeerAddress(this.uri) : super(TransportType.WebSockets);
+  @override
+  String toString() => "WsPeerAddress(${uri.toString()})";
+}
 
 class WsNotConnectedException extends NotConnectedException {}
 
 class WsTransport extends AbstractTransport<WsListener, WsConnection> {
-  Future<WsConnection> dial(Uri address) async {
-    // TODO: make connect call async
-    final channel = ws_channel.WebSocketChannel.connect(address);
-    return WsConnection(address, channel);
+  @override
+  TransportType get type => TransportType.WebSockets;
+
+  Future<WsConnection> dial(PeerAddress address) async {
+    if (address is WsPeerAddress) {
+      // TODO: make connect call async
+      final channel = ws_channel.WebSocketChannel.connect(
+        address.uri,
+        protocols: ["appia"],
+      );
+      return WsConnection(address, channel);
+    } else {
+      throw Exception(
+          "invalid transport type for websocket transport: ${address.transportType}");
+    }
   }
 
-  Future<WsListener> listen(InternetAddress listeningAddress, int listeningPort,
-      {String path = "/"}) async {
-    // TODO: make this support web platform (can we even? listening on a port in a browser?)
-    var server = await HttpServer.bind(listeningAddress, listeningPort);
-    return WsListener(server, listeningAddress, listeningPort, path: path);
+  Future<WsListener> listen(ListeningAddress? listeningAddress) async {
+    if (listeningAddress is WsListeningAddress) {
+      var server = await HttpServer.bind(
+        listeningAddress.host,
+        listeningAddress.port,
+      );
+      return WsListener(server, listeningAddress);
+    } else {
+      throw Exception(
+          "invalid transport type for websocket transport: ${listeningAddress?.transportType}");
+    }
   }
 }
 
 /* 
  * WsConnection with event based interface.
  * 
- * TODO: test this
  * */
 class WsConnection extends AbstractConnection {
+  @override
+  TransportType get type => TransportType.WebSockets;
+
   bool _connected = true;
   ws_channel.WebSocketChannel _channel;
   late Stream<dynamic> _streamAsBrodacast;
 
-  final Uri peerAddress;
+  final WsPeerAddress peerAddress;
 
   WsConnection(
     this.peerAddress,
@@ -74,7 +113,7 @@ class WsConnection extends AbstractConnection {
     await this.close(
         CloseReason(code: CloseCode.NormalClosure, message: "reconnecting"));
     print("connecting websocket to addr $this.peerAddress");
-    final channel = ws_channel.WebSocketChannel.connect(this.peerAddress);
+    final channel = ws_channel.WebSocketChannel.connect(this.peerAddress.uri);
     this._streamAsBrodacast = channel.stream.asBroadcastStream();
     this._channel = channel;
     this._connected = true;
@@ -165,40 +204,64 @@ class WsConnection extends AbstractConnection {
   }
 }
 
-/*
- * TODO: research
- */
 class WsListener extends AbstractListener<WsConnection> {
+  @override
+  TransportType get type => TransportType.WebSockets;
+
   final HttpServer _httpServer;
   Stream<WsConnection> get incomingConnections => this._connectionStream;
   Stream<WsConnection> _connectionStream;
-  final InternetAddress address;
-  final int port;
-  final String path;
-  WsListener(this._httpServer, this.address, this.port, {this.path = ""})
+
+  @override
+  // TODO: implement listeningAddress
+  final WsListeningAddress listeningAddress;
+
+  WsListener(this._httpServer, this.listeningAddress)
       : _connectionStream = _httpServer
             .asyncMap((request) async {
               if (/* request.uri.scheme == "ws" && */
-                  request.uri.path == path &&
+                  request.uri.path == listeningAddress.path &&
                       WebSocketTransformer.isUpgradeRequest(request)) {
                 print("upgrading request to ws");
+                // FIXME: yeah, we should add more to the handshake
+                final connInfo = request.connectionInfo!;
+
+                // we shan't use the stream version of the transformer
+                // we won't be
+                // TODO: make use of WebSocket's protocol feature?
                 var socket = await WebSocketTransformer.upgrade(request);
+                final peerAddress = new WsPeerAddress(
+                  new Uri(
+                    host: connInfo.remoteAddress.host,
+                    port: connInfo.remotePort,
+                  ),
+                );
                 return new WsConnection(
-                  Uri.parse("shit"),
-                  // TODO: make this cross platform
+                  peerAddress,
                   new ws_channel_io.IOWebSocketChannel(socket),
                 );
               } else {
+                // print(
+                //   "invalid request found: ${request.uri.scheme}://${request.uri.host}:${request.uri.port}${request.uri.path}",
+                // );
                 print(
-                    "invalid request found: ${request.uri.scheme}://${request.uri.host}:${request.uri.port}${request.uri.path}");
+                  "invalid request found: ${request.uri.toString()}",
+                );
                 request.response.statusCode = HttpStatus.badRequest;
                 await request.response.close();
                 return null;
               }
             })
+            // filter out the failed upgrades
+            // i miss rust
             .where((ws) => ws != null)
             .map((ws) => ws!)
             // .isBroadcast
             // TODO: check if this is a broadcast stream as is
             .asBroadcastStream();
+
+  @override
+  void close() {
+    this._httpServer.close();
+  }
 }
