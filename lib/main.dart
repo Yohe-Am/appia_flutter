@@ -16,21 +16,23 @@ void main() {
       var listener = await transport.listen(
         WsListeningAddress(
           InternetAddress.tryParse("127.0.0.1")!,
-          8088,
+          8088, // note the different port
         ),
       );
       listener.incomingConnections
           .map((conn) => new EventedConnection(
                 conn,
                 onMessage: (_, msg) {
-                  print("got message ${msg.toJson()}");
+                  print("server got message ${msg.toJson()}");
                 },
               ))
-          .forEach((conn) => conn.listen(
-                "echo",
-                (connection, data) =>
-                    connection.emit(EventMessage("echo", data)),
-              ));
+          .forEach((conn) {
+        print("server got connection from ${conn.connection.peerAddress}");
+        conn.listen(
+          "echo",
+          (connection, data) => connection.emit(EventMessage("echo", data)),
+        );
+      });
     } catch (err) {
       print("err seting up dumb server: $err");
     }
@@ -52,28 +54,116 @@ class DumbNamester extends AbstractNamester {
   Future<void> updateMyAddress(AppiaId id, PeerAddress address) async {}
 }
 
-enum DemoState { Connected, Connecting, NotConnected }
+enum DemoConnectionState { Connected, Connecting, NotConnected }
+enum DemoListeningState { Listening, NotListening }
 
 /// Cubit for controlling the demo connection
-class DemoConnectionCubit extends Cubit<DemoState> {
-  final AbstractTransport tport;
+class DemoConnectionCubit extends Cubit<DemoConnectionState> {
   ConnectionBloc? connBloc;
-  DemoConnectionCubit()
+  final DemoMessagesCubit msgsCubit;
+  late final AbstractListener listener;
+  final AbstractTransport tport;
+
+  DemoConnectionCubit(this.msgsCubit)
       : tport = WsTransport(),
-        super(DemoState.NotConnected);
+        super(DemoConnectionState.NotConnected);
+
+  void setConnection(AbstractConnection conn) {
+    if (this.state == DemoConnectionState.Connected) {
+      this.msgsCubit.addMessage(
+          "Incoming connection from ${conn.peerAddress.toString()} rejected.");
+      return;
+    }
+    this.connBloc = ConnectionBloc(conn, reconnect: true);
+    this.connBloc!.eventedConnection.onMessage = (_, msg) {
+      msgsCubit.addMessage("incoming " + msg.toJson());
+    };
+    this.connBloc!.eventedConnection.onError = (_, e) {
+      msgsCubit.addMessage("error from evented connection: $e");
+    };
+    this.connBloc!.eventedConnection.onFinish = (conn, e) {
+      msgsCubit
+          .addMessage("connection finished: ${conn.connection.closeReason}");
+      emit(DemoConnectionState.NotConnected);
+    };
+    msgsCubit
+        .addMessage("connected to peer at: ${conn.peerAddress.toString()}");
+    emit(DemoConnectionState.Connected);
+  }
 
   void connect(WsPeerAddress addr) {
+    if (this.connBloc != null) this.msgsCubit.addMessage("Already connected");
     this.tport.dial(addr).then(
-      (conn) {
-        this.connBloc = ConnectionBloc(conn);
-        emit(DemoState.Connected);
-      },
+      this.setConnection,
       onError: (error, stackTrace) {
-        print(
+        msgsCubit.addMessage(
             "err dialing to address (${addr.toString()}): $error\n$stackTrace");
-        emit(DemoState.NotConnected);
+        emit(DemoConnectionState.NotConnected);
       },
     );
+  }
+
+  void sendMessage(EventMessage<dynamic> msg) {
+    if (this.connBloc == null) throw "Not connected";
+    this.connBloc!.eventedConnection.emit(msg).then(
+      (v) => msgsCubit.addMessage("outgoing: " + msg.toJson()),
+      onError: (e) {
+        msgsCubit.addMessage("error sending message $e");
+      },
+    );
+  }
+
+  void disconnect() {
+    this.connBloc!.close().then((v) {
+      msgsCubit.addMessage("disconnected");
+      this.connBloc = null;
+      emit(DemoConnectionState.NotConnected);
+    });
+  }
+}
+
+/// Cubit for controlling the demo listening
+class DemoListeningCubit extends Cubit<DemoListeningState> {
+  final AbstractTransport tport;
+  final DemoMessagesCubit msgsCubit;
+  final DemoConnectionCubit connCubit;
+  AbstractListener? listener;
+  DemoListeningCubit(this.msgsCubit, this.connCubit)
+      : tport = WsTransport(),
+        super(DemoListeningState.NotListening);
+
+  void startListening(WsListeningAddress addr) {
+    if (this.listener != null) this.msgsCubit.addMessage("Already listening");
+
+    // initiate a listener
+    final transport = new WsTransport();
+    transport.listen(addr).then(
+      (ls) {
+        this.listener = ls;
+        // listen for incoming connections
+        ls.incomingConnections.listen(
+          this.connCubit.setConnection,
+          onError: (e) {
+            this.msgsCubit.addMessage("listening error ${e.toString()}");
+          },
+        );
+        emit(DemoListeningState.Listening);
+        this.msgsCubit.addMessage("listening on ${ls.listeningAddress}.");
+      },
+      onError: (error, stackTrace) {
+        this.msgsCubit.addMessage(
+            "error establishing node listener: $error\n$stackTrace");
+      },
+    );
+  }
+
+  void stopListening() {
+    if (this.listener != null) {
+      this.listener!.close();
+      this.listener = null;
+      this.msgsCubit.addMessage("listener severed");
+      emit(DemoListeningState.NotListening);
+    }
   }
 }
 
@@ -83,32 +173,10 @@ class Messages {
   Messages(this.messages);
 }
 
-// i hate it
-// something's broken how something's set up
-// hmm
-// I guess this fellow is enterprising as a little repository
 class DemoMessagesCubit extends Cubit<Messages> {
-  final DemoConnectionCubit connCubit;
-
-  DemoMessagesCubit(this.connCubit) : super(Messages([])) {
-    this.connCubit.stream.listen((event) {
-      if (event == DemoState.Connected) {
-        connCubit.connBloc!.eventedConnection.onMessage = (_, msg) {
-          this._addMessage("incoming " + msg.toJson());
-        };
-      }
-    });
-  }
-  void sendMessage(EventMessage<dynamic> msg) {
-    this
-        .connCubit
-        .connBloc!
-        .eventedConnection
-        .emit(msg)
-        .then((v) => this._addMessage("outgoing: " + msg.toJson()));
-  }
-
-  void _addMessage(String s) {
+  DemoMessagesCubit() : super(Messages([]));
+  void addMessage(String s) {
+    print("message added $s");
     final state = this.state;
     state.messages.add(s);
     emit(Messages(state.messages));
@@ -119,52 +187,62 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       // provide repositorys first
-      MultiRepositoryProvider(
-          providers: [
-            RepositoryProvider(
-              create: (context) {
-                final transport = new WsTransport();
-                final bloc = new P2PBloc(
-                  P2PNode(
-                    DumbNamester(
-                      WsPeerAddress(Uri.parse("ws://127.0.0.1:8080")),
-                    ),
-                    tports: [WsTransport()],
+      /*MultiRepositoryProvider(
+        providers: [
+          
+          RepositoryProvider(
+            create: (context) {
+              final transport = new WsTransport();
+              final bloc = new P2PBloc(
+                P2PNode(
+                  DumbNamester(
+                    WsPeerAddress(Uri.parse("ws://127.0.0.1:8080")),
                   ),
-                );
-                transport
-                    .listen(WsListeningAddress(
-                      InternetAddress.tryParse("127.0.0.1")!,
-                      8080,
-                    ))
-                    .then((listener) => bloc.node.addListener(listener))
-                    .onError(
-                  (error, stackTrace) {
-                    print(
-                        "error establishing node listener: $error\n$stackTrace");
-                  },
-                );
-                return bloc;
-              },
+                  tports: [WsTransport()],
+                ),
+              );
+              transport
+                  .listen(WsListeningAddress(
+                    InternetAddress.tryParse("127.0.0.1")!,
+                    8080,
+                  ))
+                  .then((listener) => bloc.node.addListener(listener))
+                  .onError(
+                (error, stackTrace) {
+                  print(
+                      "error establishing node listener: $error\n$stackTrace");
+                },
+              );
+              return bloc;
+            },
+          ),
+        ],
+        // then come the blocs
+        child:*/
+      MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => DemoMessagesCubit(),
+          ),
+          BlocProvider(
+            create: (context) =>
+                DemoConnectionCubit(context.read<DemoMessagesCubit>()),
+          ),
+          BlocProvider(
+            create: (context) => DemoListeningCubit(
+              context.read<DemoMessagesCubit>(),
+              context.read<DemoConnectionCubit>(),
             ),
-          ],
-          // then come the blocs
-          child: MultiBlocProvider(
-            providers: [
-              BlocProvider(create: (context) => DemoConnectionCubit()),
-              BlocProvider(
-                create: (context) =>
-                    DemoMessagesCubit(context.read<DemoConnectionCubit>()),
-              )
-            ],
-            child: MaterialApp(
-              title: 'Appia Demo',
-              theme: ThemeData(
-                primarySwatch: Colors.pink,
-              ),
-              home: MyHomePage(title: 'Appia Demo'),
-            ),
-          ));
+          ),
+        ],
+        child: MaterialApp(
+          title: 'Appia Demo',
+          theme: ThemeData(
+            primarySwatch: Colors.pink,
+          ),
+          home: MyHomePage(title: 'Appia Demo'),
+        ),
+      );
 }
 
 class MyHomePage extends StatefulWidget {
@@ -178,21 +256,27 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final _connectFormKey = GlobalKey<FormState>();
   final _msgformKey = GlobalKey<FormState>();
+  final _listenForm = GlobalKey<FormState>();
 
   String _event = "echo";
   String _message = "hello appia";
 
+  // try connecting to port 8088 to access the local echo server
+  // else, find the host of the other device
   String _peerHost = "127.0.0.1";
-  int _peerPort = 8088;
+  int _peerPort = 8080;
+
+  String _listenHost = "192.168.43.39";
+  int _listenPort = 8080;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: BlocBuilder<DemoConnectionCubit, DemoState>(
-          builder: (context, state) => state == DemoState.Connected
+        title: BlocBuilder<DemoConnectionCubit, DemoConnectionState>(
+          builder: (context, state) => state == DemoConnectionState.Connected
               ? Text("Connected")
-              : state == DemoState.Connecting
+              : state == DemoConnectionState.Connecting
                   ? Text("Connecting")
                   : Text("Not Connected"),
         ),
@@ -201,13 +285,86 @@ class _MyHomePageState extends State<MyHomePage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Form(
-            key: this._connectFormKey,
-            child: BlocBuilder<DemoConnectionCubit, DemoState>(
+            key: this._listenForm,
+            child: BlocBuilder<DemoListeningCubit, DemoListeningState>(
               builder: (context, state) => Row(
                 children: [
                   Expanded(
                     child: TextFormField(
-                      enabled: state == DemoState.NotConnected,
+                      enabled: state == DemoListeningState.NotListening,
+                      initialValue: this._listenHost,
+                      onSaved: (value) {
+                        if (value != null)
+                          setState(() {
+                            this._listenHost = value;
+                          });
+                      },
+                      validator: (host) {
+                        if (host == null || host.isEmpty) {
+                          return "Listening host field is empty.";
+                        }
+                        if (InternetAddress.tryParse(host) == null)
+                          return "Lisetning host is not valid.";
+                        return null;
+                      },
+                    ),
+                  ),
+                  Container(
+                    width: 75,
+                    child: TextFormField(
+                      enabled: state == DemoListeningState.NotListening,
+                      initialValue: this._listenPort.toString(),
+                      onSaved: (value) {
+                        if (value != null)
+                          setState(() {
+                            this._listenPort = int.parse(value);
+                          });
+                      },
+                      validator: (port) {
+                        if (port == null || port.isEmpty) {
+                          return "Listening port field is empty.";
+                        }
+                        if (int.tryParse(port) == null) {
+                          return "Listening port field is invalid.";
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  state == DemoListeningState.NotListening
+                      ? ElevatedButton(
+                          onPressed: () {
+                            final form = this._listenForm.currentState;
+                            if (form != null && form.validate()) {
+                              form.save();
+                              context
+                                  .read<DemoListeningCubit>()
+                                  .startListening(WsListeningAddress(
+                                    InternetAddress.tryParse(this._listenHost)!,
+                                    this._listenPort,
+                                  ));
+                            }
+                          },
+                          child: const Text("Listen"),
+                        )
+                      : ElevatedButton(
+                          onPressed: () {
+                            context.read<DemoListeningCubit>().stopListening();
+                          },
+                          child: const Text("Close"),
+                        )
+                ],
+              ),
+            ),
+          ),
+          Form(
+            key: this._connectFormKey,
+            child: BlocBuilder<DemoConnectionCubit, DemoConnectionState>(
+              builder: (context, state) => Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      enabled: state == DemoConnectionState.NotConnected,
                       initialValue: this._peerHost,
                       onSaved: (value) {
                         if (value != null)
@@ -217,8 +374,10 @@ class _MyHomePageState extends State<MyHomePage> {
                       },
                       validator: (host) {
                         if (host == null || host.isEmpty) {
-                          return "Host field is empty.";
+                          return "Connection host field is empty.";
                         }
+                        if (InternetAddress.tryParse(host) == null)
+                          return "Lisetning host is not valid.";
                         return null;
                       },
                     ),
@@ -226,7 +385,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Container(
                     width: 75,
                     child: TextFormField(
-                      enabled: state == DemoState.NotConnected,
+                      enabled: state == DemoConnectionState.NotConnected,
                       initialValue: this._peerPort.toString(),
                       onSaved: (value) {
                         if (value != null)
@@ -245,10 +404,10 @@ class _MyHomePageState extends State<MyHomePage> {
                       },
                     ),
                   ),
-                  state == DemoState.NotConnected
+                  state == DemoConnectionState.NotConnected
                       ? ElevatedButton(
                           onPressed: () {
-                            final form = this._msgformKey.currentState;
+                            final form = this._connectFormKey.currentState;
                             if (form != null && form.validate()) {
                               form.save();
                               context.read<DemoConnectionCubit>().connect(
@@ -263,10 +422,12 @@ class _MyHomePageState extends State<MyHomePage> {
                           },
                           child: const Text("Connect"),
                         )
-                      : state == DemoState.Connected
+                      : state == DemoConnectionState.Connected
                           ? ElevatedButton(
                               onPressed: () {
-                                // TODO:
+                                context
+                                    .read<DemoConnectionCubit>()
+                                    .disconnect();
                               },
                               child: const Text("Disconnect"),
                             )
@@ -327,14 +488,14 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ),
                 ),
-                BlocBuilder<DemoConnectionCubit, DemoState>(
+                BlocBuilder<DemoConnectionCubit, DemoConnectionState>(
                   builder: (context, state) => ElevatedButton(
-                    onPressed: state == DemoState.Connected
+                    onPressed: state == DemoConnectionState.Connected
                         ? () {
                             final form = this._msgformKey.currentState;
                             if (form != null && form.validate()) {
                               form.save();
-                              context.read<DemoMessagesCubit>().sendMessage(
+                              context.read<DemoConnectionCubit>().sendMessage(
                                     EventMessage(this._event, this._message),
                                   );
                             }
