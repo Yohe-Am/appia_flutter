@@ -11,19 +11,28 @@ class ChatRoom extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Appia"),
+          leading: IconButton(
+            icon: Icon(Icons.chevron_left_outlined),
+            onPressed: () {},
+          ),
+          title: Text("Will"),
           actions: [
-            IconButton(
-              onPressed: null,
-              icon: Icon(Icons.search),
-            ),
-            Text("Contacts"),
-            Text("Settings"),
-            Text("Blocked List"),
+            PopupMenuButton<int>(
+                onSelected: (item) => onSelected(context, item),
+                itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 0,
+                        child: Text('Settings'),
+                      ),
+                      PopupMenuItem(
+                        value: 1,
+                        child: Text('Block'),
+                      ),
+                    ]),
           ],
         ),
         body: Container(
-          height: MediaQuery.of(context).size.height,
+          height: MediaQuery.of(context).size.height * 0.85,
           width: MediaQuery.of(context).size.width,
           child: SingleChildScrollView(
             scrollDirection: Axis.vertical,
@@ -35,18 +44,41 @@ class ChatRoom extends StatelessWidget {
                 MessageUI(message: AppiaData.messages[3]),
                 MessageUI(message: AppiaData.messages[4]),
                 MessageUI(message: AppiaData.messages[5]),
+                MessageUI(message: AppiaData.messages[4]),
+                MessageUI(message: AppiaData.messages[5]),
+                MessageUI(message: AppiaData.messages[4]),
+                MessageUI(message: AppiaData.messages[5]),
+                MessageUI(message: AppiaData.messages[4]),
+                MessageUI(message: AppiaData.messages[5]),
+                MessageUI(message: AppiaData.messages[4]),
+                MessageUI(message: AppiaData.messages[5]),
+                MessageUI(message: AppiaData.messages[4]),
+                MessageUI(message: AppiaData.messages[5]),
               ],
             ),
           ),
         ),
         bottomSheet: Container(
-          //text field typing one... row with textfield and send message
-          color: Colors.red,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 8,
+                child: TextField(
+                  decoration: InputDecoration(hintText: 'Send Message'),
+                ),
+              ),
+              IconButton(icon: Icon(Icons.send), onPressed: sendMessage())
+            ],
+          ),
           height: 50,
         ),
       ),
     );
   }
+
+  onSelected(BuildContext context, int item) {}
+
+  sendMessage() {}
 }
 
 class MessageUI extends StatelessWidget {
@@ -64,33 +96,41 @@ class MessageUI extends StatelessWidget {
             ? CrossAxisAlignment.start
             : CrossAxisAlignment.end,
         children: [
-          Text(message.senderUsername),
+          // Text(message.senderUsername),
           Container(
             constraints: BoxConstraints(
-              minWidth: MediaQuery.of(context).size.width * 0.25,
+              minWidth: MediaQuery.of(context).size.width * 0.45,
               maxWidth: MediaQuery.of(context).size.width * 0.67,
             ),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.black12),
               borderRadius: BorderRadius.all(
-                Radius.circular(MediaQuery.of(context).size.width * 0.1),
+                Radius.circular(MediaQuery.of(context).size.width * 0.05),
               ),
               color: Colors.blue.shade100,
             ),
             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             child: Column(
-              crossAxisAlignment: message.senderUsername != currentUser
-                  ? CrossAxisAlignment.start
-                  : CrossAxisAlignment.end,
               children: [
-                Text(message.text),
-                Text(
-                  message.date,
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w200,
-                  ),
-                ),
+                Row(
+                    mainAxisAlignment: message.senderUsername != currentUser
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.end,
+                    children: [
+                      Flexible(child: Text(message.text)),
+                    ]),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      message.date,
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w200,
+                      ),
+                    ),
+                  ],
+                )
               ],
             ),
           ),

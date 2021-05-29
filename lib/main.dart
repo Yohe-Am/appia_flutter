@@ -1,5 +1,6 @@
 import 'package:appia/screens/ChatRoom.dart';
 import 'package:appia/screens/HomePage.dart';
+import 'package:appia/screens/Search.dart';
 import 'package:flutter/material.dart';
 
 void main() {
