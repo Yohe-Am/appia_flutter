@@ -11,7 +11,9 @@ class Search extends StatelessWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.chevron_left_outlined),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
         title: TextField(
           decoration: InputDecoration(hintText: 'Search'),

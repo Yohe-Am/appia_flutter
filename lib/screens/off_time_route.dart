@@ -71,7 +71,9 @@ class OffTimeAppRoute {
         builder: (context) => HomePage(),
       );
     }
-
+    if (settings.name == ChatRoom.routeName) {
+      return MaterialPageRoute(builder: (context) => ChatRoom());
+    }
     return MaterialPageRoute(builder: (context) => IntroPage());
   }
 }
