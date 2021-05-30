@@ -46,11 +46,12 @@ class WsPeerAddress extends PeerAddress {
   String toJson() => '{ "type": "ws", "uri": "${uri.toString()}" }';
 }
 
+/// Prepend id strings with aid:
 class AppiaId {
   final String id;
-  const AppiaId(this.id);
+  AppiaId(this.id) : assert(id.startsWith('aid:'));
   @override
-  String toString() => 'aid:$id';
+  String toString() => '$id';
 }
 
 class UserEntry {
@@ -88,10 +89,15 @@ class NamesterServer {
 
   NamesterServer();
 
+  /// Can be configured with environment variables:
+  ///
+  /// -  SHELF_PORT: port to run (default 8080)
+  /// - SHELF_ADDRESS: address to bind to (default 'localhost')
+  /// - SHELF_HOTRELOAD: enable (true) or disable (false) hot reload (default true)
   Future<void> serve({
     String host = '127.0.0.1',
     int port = 3000,
-    bool hotReload = true,
+    bool hotReload = false,
   }) async {
     context = await shelfRun(
       _init,

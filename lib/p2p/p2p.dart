@@ -1,15 +1,11 @@
 import 'dart:collection';
-import 'dart:io';
 import 'dart:async';
 
-import 'transports/transports.dart';
+import 'package:namester/namester.dart';
+export 'package:namester/namester.dart' show AppiaId;
 
-class AppiaId {
-  final String id;
-  const AppiaId(this.id);
-  @override
-  String toString() => "AppiaId($id)";
-}
+import 'namester_client.dart';
+import 'transports/transports.dart';
 
 /// This is the connection after the handshake
 ///
@@ -109,7 +105,7 @@ class P2PNode {
 
   static int _lastAppiaId = 1;
   Future<AppiaConnection?> connectTo(AppiaId id) async {
-    final addr = await this.namester.getAddress(id);
+    final addr = await this.namester.getAddressForId(id);
     if (addr == null) throw Exception("unable to find address for id");
     final tport = this.transports[addr.transportType];
     if (tport == null)
@@ -136,32 +132,5 @@ class P2PNode {
       );
     }
     this._incomingConnectionsController.close();
-  }
-}
-
-/// Interface for interacting with a name server
-abstract class AbstractNamester {
-  Future<PeerAddress?> getAddress(AppiaId id);
-  Future<void> updateMyAddress(AppiaId id, PeerAddress address);
-}
-
-/// Interface for nameserver that's on an REST API elsewhere
-class HttpNamesterProxy extends AbstractNamester {
-  final HttpClient _client;
-
-  Uri _nameserverAddress;
-
-  HttpNamesterProxy(this._nameserverAddress) : _client = new HttpClient();
-
-  @override
-  Future<PeerAddress?> getAddress(AppiaId id) async {
-    // TODO: implement getAddress
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> updateMyAddress(AppiaId id, PeerAddress address) {
-    // TODO: implement updateMyAddress
-    throw UnimplementedError();
   }
 }

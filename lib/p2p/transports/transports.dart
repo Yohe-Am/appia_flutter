@@ -1,15 +1,9 @@
+import 'package:namester/namester.dart';
+
 export 'evented_connection.dart';
 export 'websocket.dart';
-
-/// We mainly use these enum for runtime compatablity checks between
-/// addresses and transports
-enum TransportType { WebSockets }
-
-/// i miss rust
-abstract class PeerAddress {
-  final TransportType transportType;
-  const PeerAddress(this.transportType);
-}
+export 'package:namester/namester.dart'
+    show PeerAddress, WsPeerAddress, TransportType;
 
 abstract class ListeningAddress {
   final TransportType transportType;

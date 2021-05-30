@@ -6,8 +6,8 @@
 - [ ] Handshake
 - [ ] Search
 - [ ] Message persistance
-- [ ] Name server
-  - [ ] Client
+- [x] Name server
+  - [x] Client
 
 ## design-doc
 
