@@ -21,13 +21,6 @@ class WsListeningAddress extends ListeningAddress {
   String toString() => "WsListeningAddress(${host.toString()}:$port$path)";
 }
 
-class WsPeerAddress extends PeerAddress {
-  final Uri uri;
-  WsPeerAddress(this.uri) : super(TransportType.WebSockets);
-  @override
-  String toString() => "WsPeerAddress(${uri.toString()})";
-}
-
 class WsNotConnectedException extends NotConnectedException {}
 
 class WsTransport extends AbstractTransport<WsListener, WsConnection> {
