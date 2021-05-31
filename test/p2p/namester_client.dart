@@ -24,7 +24,7 @@ void main() async {
     }
     // get-peer-address id
     {
-      final addr = await client.getAddressForId(AppiaId(entry.id));
+      final addr = await client.getAddressForId(entry.id);
       assert(addr != null);
       assert(addr!.toJson() == entry.address.toJson());
     }
@@ -37,10 +37,10 @@ void main() async {
       );
       {
         await client.updateMyAddress(
-            AppiaId(testEntry.id), testEntry.username, testEntry.address);
+            testEntry.id, testEntry.username, testEntry.address);
       }
       {
-        final addr = await client.getAddressForId(AppiaId(testEntry.id));
+        final addr = await client.getAddressForId(testEntry.id);
         assert(addr != null);
         assert(addr!.toJson() == testEntry.address.toJson());
       }

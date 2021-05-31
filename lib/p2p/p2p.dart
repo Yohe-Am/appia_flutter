@@ -15,7 +15,7 @@ import 'transports/transports.dart';
 /// in an [`EventedConnection`] the way [`ConnectionBloc`] does
 /// Use it to only attach metadata
 class AppiaConnection {
-  final AppiaId id;
+  final String id;
   final AbstractConnection connection;
   AppiaConnection(this.id, this.connection);
   // AppiaConnection.fromRaw(this.id, AbstractConnection rawConn): connection = EventedConnection(rawConn);
@@ -30,7 +30,7 @@ class AppiaConnection {
 class P2PNode {
   final Map<TransportType, AbstractTransport> transports = new HashMap();
   final Map<ListeningAddress, AbstractListener> listeners = new HashMap();
-  final Map<AppiaId, AppiaConnection> peerConnections = new HashMap();
+  final Map<String, AppiaConnection> peerConnections = new HashMap();
 
   /// Listen on this to get a stream of connections combind from all registered
   /// AbstractListeners
@@ -81,7 +81,7 @@ class P2PNode {
     });
   }
 
-  AppiaConnection addConnection(AppiaId peerId, AbstractConnection connection) {
+  AppiaConnection addConnection(String peerId, AbstractConnection connection) {
     final appiaConn = AppiaConnection(peerId, connection);
     this.peerConnections[peerId] = appiaConn;
 
@@ -99,12 +99,11 @@ class P2PNode {
 
   Future<AppiaConnection> _doHandshake(AbstractConnection connection) async {
     // TODO: implement hanshake
-    return this.addConnection(
-        AppiaId((P2PNode._lastAppiaId++).toString()), connection);
+    return this.addConnection((P2PNode._lastAppiaId++).toString(), connection);
   }
 
   static int _lastAppiaId = 1;
-  Future<AppiaConnection?> connectTo(AppiaId id) async {
+  Future<AppiaConnection?> connectTo(String id) async {
     final addr = await this.namester.getAddressForId(id);
     if (addr == null) throw Exception("unable to find address for id");
     final tport = this.transports[addr.transportType];
