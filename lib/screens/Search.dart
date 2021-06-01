@@ -1,5 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
+import '../appia.dart';
 
 class Search extends StatelessWidget {
   static const routeName = 'Search';
@@ -7,37 +10,50 @@ class Search extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left_outlined),
-          onPressed: () {},
+    final userDataProvider = UserDataProvider(httpClient: http.Client());
+    final userRepository = UserRepository(userDataProvider: userDataProvider);
+    final searchBloc = UserBloc(userRepository);
+    return BlocProvider(
+      create: (context) => searchBloc..add(GetAllUsers()),
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.chevron_left_outlined),
+            onPressed: () {},
+          ),
+          title: TextField(
+            decoration: InputDecoration(hintText: 'Search'),
+            onChanged: (username) {
+              if (username.length > 0) {
+                searchBloc.add(SearchUserRequested(username));
+              }
+            },
+          ),
         ),
-        title: TextField(
-          decoration: InputDecoration(hintText: 'Search'),
+        body: BlocBuilder<UserBloc, UserState>(
+          builder: (context, state) => state is UserLoadSuccess
+              ? ListView.builder(
+                  itemCount: ts.searchList.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(state.user.username.substring(0, 1)),
+                      subtitle: Text(state.user.username),
+                    );
+                  })
+              : Text(''),
         ),
       ),
-      body: ListView.builder(
-          itemCount: ts.searchList.length,
-          itemBuilder: (context, index) {
-            final item = ts.searchList[index];
-            return ListTile(
-              title: Text(item.userHeader),
-              subtitle: Text(item.username),
-            );
-          }),
     );
   }
 }
 
 class SearchList {
   final List<SearchItem> searchList =
-      List<SearchItem>.generate(10, (i) => SearchItem('User $i', 'U'));
+      List<SearchItem>.generate(10, (i) => SearchItem('User $i'));
 }
 
 class SearchItem {
   final String username;
-  final String userHeader;
 
-  SearchItem(this.username, this.userHeader);
+  SearchItem(this.username);
 }
