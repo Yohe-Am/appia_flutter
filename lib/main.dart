@@ -1,7 +1,5 @@
 //@dart=2.9
-import 'package:appia/screens/ChatRoom.dart';
 import 'package:appia/screens/HomePage.dart';
-import 'package:appia/screens/Search.dart';
 import 'package:appia/screens/off_time_route.dart';
 import 'package:flutter/material.dart';
 
