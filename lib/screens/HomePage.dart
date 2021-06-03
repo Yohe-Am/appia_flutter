@@ -15,7 +15,6 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      // TODO: change it to ChatBloc... LoadChats()
       create: (context) => roomsBloc..add(LoadRooms()),
       child: Scaffold(
         appBar: AppBar(
@@ -76,15 +75,15 @@ class HomePage extends StatelessWidget {
 }
 
 class UnseenText extends StatelessWidget {
-  //TODO: change this to take Chat object instead
-
   Room room;
-
-  TextMessage lastMessage = TextMessage(room.entries![0]);
   UnseenText({required this.room});
 
   @override
   Widget build(BuildContext context) {
+    var text = room.entries[0];
+    //how do you cast in golang
+    TextMessage lastMessage = TextMessage(text);
+
     return GestureDetector(
       onTap: () {
         Navigator.of(context).pushNamed(ChatRoom.routeName, arguments: room);
