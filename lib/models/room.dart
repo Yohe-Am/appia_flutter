@@ -1,3 +1,4 @@
+import 'package:appia/models/message.dart';
 import 'package:appia/models/room_entry.dart';
 import 'package:json_annotation/json_annotation.dart';
 
