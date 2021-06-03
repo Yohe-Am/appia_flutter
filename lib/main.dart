@@ -1,8 +1,9 @@
-//@dart=2.9
+// @dart=2.9
+import 'package:appia/appia.dart';
 import 'package:appia/screens/ChatRoom.dart';
 import 'package:appia/screens/HomePage.dart';
 import 'package:appia/screens/Search.dart';
-import 'package:appia/screens/off_time_route.dart';
+import 'package:appia/screens/appia_route.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -25,10 +26,9 @@ class MyApp extends StatelessWidget {
         // or simply save your changes to "hot reload" in a Flutter IDE).
         // Notice that the counter didn't reset back to zero; the application
         // is not restarted.
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.grey,
       ),
-      home: HomePage(),
-      onGenerateRoute: OffTimeAppRoute.generateRoute,
+      onGenerateRoute: AppiaAppRoute.generateRoute,
     );
   }
 }
