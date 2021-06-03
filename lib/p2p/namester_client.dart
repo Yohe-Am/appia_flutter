@@ -7,12 +7,11 @@ import 'package:namester/namester.dart';
 /// Interface for interacting with a name server
 abstract class AbstractNamester {
   /// Returns null if id not recognized
-  Future<PeerAddress?> getAddressForId(AppiaId id);
+  Future<PeerAddress?> getAddressForId(String id);
 
   /// Returns null if username not recognized
   Future<PeerAddress?> getAddressForUsername(String username);
-  Future<void> updateMyAddress(
-      AppiaId id, String username, PeerAddress address);
+  Future<void> updateMyAddress(String id, String username, PeerAddress address);
 }
 
 /// Returns null if id not recognized
@@ -24,8 +23,7 @@ class HttpNamesterProxy extends AbstractNamester {
 
   HttpNamesterProxy(this._nameserverAddress) : _client = new Client();
 
-  @override
-  Future<PeerAddress?> getAddressForId(AppiaId id) async {
+  Future<PeerAddress?> getAddressForId(String id) async {
     try {
       final response = await _client.post(
         _nameserverAddress.resolve("/get-peer-address"),
@@ -70,7 +68,7 @@ class HttpNamesterProxy extends AbstractNamester {
 
   @override
   Future<void> updateMyAddress(
-      AppiaId id, String username, PeerAddress address) async {
+      String id, String username, PeerAddress address) async {
     try {
       final response = await _client.put(
         _nameserverAddress.resolve("/put-peer-address"),
@@ -95,13 +93,13 @@ class DumbNamester extends AbstractNamester {
 
   DumbNamester(this.universalAddress);
   @override
-  Future<PeerAddress?> getAddressForId(AppiaId id) async {
+  Future<PeerAddress?> getAddressForId(String id) async {
     return this.universalAddress;
   }
 
   @override
   Future<void> updateMyAddress(
-      AppiaId id, String username, PeerAddress address) async {
+      String id, String username, PeerAddress address) async {
     throw UnimplementedError();
   }
 

@@ -38,6 +38,31 @@
 - Use RSA public keys as Ids
 - Allow any peer to be a name server
 
+### Schema
+
+    User {
+      id: String // random string that's prefixed with `aid:`
+      username: String
+    }
+    
+    // This is the message class we'll be using but in code, there's
+    // some hierarchy above it to allow extension. Some weird fields thus.
+    TextMessage {
+      id: int64 // incrementing ints
+      type = "message" // if we ever need anymore
+      timestamp: DateTime
+      authorId: String
+      authorUsername: String // denormalization should help with some pains
+      forwadedFromId: Option<String> // forwarded only if not null
+      forwardedFromUsername: Option<forwardedFromUsername>
+      text: String
+    }
+
+    Room {
+      users: List<User>
+      entries: List<TextMessage>
+    }
+
 ## dev-log
 
 ### NAT Translation
