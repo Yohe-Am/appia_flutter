@@ -1,9 +1,10 @@
-import 'package:appia/AppiaData.dart';
-import 'package:appia/blocs/blocs.dart';
+import 'package:appia/blocs/message/message_bloc.dart';
 import 'package:appia/models/Message.dart';
-import 'package:appia/off_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'ChatRoom.dart';
+import 'Search.dart';
 
 class HomePage extends StatelessWidget {
   static const routeName = 'HomePage';
