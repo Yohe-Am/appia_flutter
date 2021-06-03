@@ -8,7 +8,7 @@ abstract class MessageEvent extends Equatable {
 }
 
 class SendMessage extends MessageEvent {
-  final Message message;
+  final TextMessage message;
 
   const SendMessage(this.message);
 
@@ -21,13 +21,6 @@ class SendMessage extends MessageEvent {
 
 class LoadMessages extends MessageEvent {
   const LoadMessages();
-
-  @override
-  List<Object> get props => [];
-}
-// TODO: Add it's own Bloc, ChatBloc
-class LoadChats extends MessageEvent {
-  const LoadChats();
 
   @override
   List<Object> get props => [];

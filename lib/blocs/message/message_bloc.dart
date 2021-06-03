@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:appia/AppiaData.dart';
 import 'package:appia/models/Message.dart';
+import 'package:appia/models/text_message.dart';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -17,20 +18,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async* {
     if (event is SendMessage) {
       // get this from the data provider or the services later
-      AppiaData.messages.add(event.message);
+      AppiaData.messages_eg1.add(event.message);
 
       yield MessageSentSuccess(event.message);
 
       //yield MessageSentFailure();
     } else if (event is LoadMessages) {
       // yield MessagesLoading();
-      List<Message> messages = AppiaData.messages;
+      List<TextMessage> messages = AppiaData.messages_eg1;
       yield MessagesLoadSuccess(messages);
       //yield MessagesLoadFailure();
-    } else if (event is LoadChats) {
-      //TODO: create ChatRoom class and give it that type
-      List<Message> chats = AppiaData.chatRoom;
-      yield ChatLoadSuccess(chats);
     }
   }
 }

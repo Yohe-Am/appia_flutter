@@ -1,20 +1,31 @@
-import 'package:appia/AppiaData.dart';
-import 'package:appia/blocs/blocs.dart';
-import 'package:appia/models/Message.dart';
+import 'package:appia/blocs/bloc/room_bloc.dart';
+import 'package:appia/blocs/message/message_bloc.dart';
+import 'package:appia/models/room.dart';
+import 'package:appia/models/text_message.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-String currentUser = "Jada";
+import '../main.dart';
 
 class ChatRoom extends StatelessWidget {
+  Room room;
+  ChatRoom(this.room);
   static const routeName = 'ChatRoom';
   final myController = TextEditingController();
+
   final messageBloc = MessageBloc();
+  final roomBloc = RoomBloc();
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => messageBloc..add(LoadMessages()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<MessageBloc>(
+          create: (context) => messageBloc..add(LoadMessages()),
+        ),
+        BlocProvider<RoomBloc>(create: (context) => roomBloc),
+      ],
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -42,8 +53,8 @@ class ChatRoom extends StatelessWidget {
         body: BlocBuilder<MessageBloc, MessageState>(
           builder: (_, state) {
             if (state is MessageSentSuccess) {
-              // TODO: Implement event to add the chat to list of chats if it is sending to a new chat
               messageBloc.add(LoadMessages());
+              roomBloc.add(AddRoom(room));
             }
             if (state is MessageSentFailure) {
               return Text('Could not load messages');
@@ -78,11 +89,11 @@ class ChatRoom extends StatelessWidget {
               IconButton(
                 icon: Icon(Icons.send),
                 onPressed: () {
-                  Message message = Message(
-                      recieverUsername: "Will",
-                      senderUsername: currentUser,
-                      text: myController.text,
-                      date: "12:03AM");
+                  TextMessage message = TextMessage(myController.text,
+                      id: 6,
+                      authorId: MyApp.currentUser.id,
+                      authorUsername: MyApp.currentUser.username,
+                      timestamp: DateTime.now());
                   MessageEvent event = SendMessage(message);
                   messageBloc.add(event);
                   print(message);
@@ -100,17 +111,17 @@ class ChatRoom extends StatelessWidget {
 }
 
 class MessageUI extends StatelessWidget {
-  Message message;
+  TextMessage message;
   MessageUI({required this.message});
   @override
   Widget build(BuildContext context) {
     return Container(
-      alignment: message.senderUsername != currentUser
+      alignment: message.authorUsername != MyApp.currentUser.username
           ? Alignment.centerLeft
           : Alignment.centerRight,
       padding: EdgeInsets.all(10),
       child: Column(
-        crossAxisAlignment: message.senderUsername != currentUser
+        crossAxisAlignment: message.authorUsername != MyApp.currentUser.username
             ? CrossAxisAlignment.start
             : CrossAxisAlignment.end,
         children: [
@@ -131,9 +142,10 @@ class MessageUI extends StatelessWidget {
             child: Column(
               children: [
                 Row(
-                    mainAxisAlignment: message.senderUsername != currentUser
-                        ? MainAxisAlignment.start
-                        : MainAxisAlignment.end,
+                    mainAxisAlignment:
+                        message.authorUsername != MyApp.currentUser.username
+                            ? MainAxisAlignment.start
+                            : MainAxisAlignment.end,
                     children: [
                       Flexible(child: Text(message.text)),
                     ]),
@@ -141,7 +153,7 @@ class MessageUI extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
-                      message.date,
+                      message.timestamp.toString(),
                       style: TextStyle(
                         fontStyle: FontStyle.italic,
                         fontWeight: FontWeight.w200,

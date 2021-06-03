@@ -9,20 +9,10 @@ abstract class MessageState extends Equatable {
 
 class MessagesLoading extends MessageState {}
 
-class MessageSentSuccess extends MessageState {
-  final Message message;
-  MessageSentSuccess(this.message);
-
-  @override
-  List<Object> get props => [message];
-}
-
-class MessageSentFailure extends MessageState {}
-
 class MessagesLoadFailure extends MessageState {}
 
 class MessagesLoadSuccess extends MessageState {
-  final List<Message> messages;
+  final List<TextMessage> messages;
 
   MessagesLoadSuccess([this.messages = const []]);
 
@@ -30,15 +20,12 @@ class MessagesLoadSuccess extends MessageState {
   List<Object> get props => [messages];
 }
 
-// TODO: Add it's own Bloc, ChatBloc
-class ChatLoadSuccess extends MessageState {
-  final List<Message> chats;
-
-  ChatLoadSuccess([this.chats = const []]);
+class MessageSentSuccess extends MessageState {
+  final TextMessage message;
+  MessageSentSuccess(this.message);
 
   @override
-  List<Object> get props => [chats];
+  List<Object> get props => [message];
 }
 
-// TODO: Add it's own Bloc, ChatBloc
-class ChatsLoadFailure extends MessageState {}
+class MessageSentFailure extends MessageState {}

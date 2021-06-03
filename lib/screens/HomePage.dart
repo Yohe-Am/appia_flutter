@@ -1,5 +1,8 @@
 import 'package:appia/blocs/message/message_bloc.dart';
+import 'package:appia/blocs/room/room_bloc.dart';
 import 'package:appia/models/Message.dart';
+import 'package:appia/models/room.dart';
+import 'package:appia/models/text_message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,12 +11,12 @@ import 'Search.dart';
 
 class HomePage extends StatelessWidget {
   static const routeName = 'HomePage';
-  MessageBloc messageBloc = MessageBloc();
+  RoomBloc roomsBloc = RoomBloc();
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       // TODO: change it to ChatBloc... LoadChats()
-      create: (context) => messageBloc..add(LoadChats()),
+      create: (context) => roomsBloc..add(LoadRooms()),
       child: Scaffold(
         appBar: AppBar(
           title: Text("Appia"),
@@ -42,26 +45,26 @@ class HomePage extends StatelessWidget {
                     ]),
           ],
         ),
-        body: BlocBuilder<MessageBloc, MessageState>(
+        body: BlocBuilder<RoomBloc, RoomState>(
           builder: (_, state) {
-            if (state is ChatsLoadFailure) {
+            if (state is RoomsLoadFailure) {
               return Text('Could not load chats');
             }
-            if (state is ChatLoadSuccess) {
-              final messages = state.chats;
+            if (state is RoomsLoadSuccess) {
+              final chats = state.rooms;
 
               return Container(
                 height: MediaQuery.of(context).size.height * 0.85,
                 width: MediaQuery.of(context).size.width,
                 padding: EdgeInsets.all(20),
                 child: ListView.builder(
-                  itemCount: messages.length,
-                  itemBuilder: (context, idx) =>
-                      UnseenText(message: messages[idx]),
+                  itemCount: chats.length,
+                  itemBuilder: (context, idx) => UnseenText(room: chats[idx]),
                 ),
               );
             }
-            print(state);
+            //print(state);
+            // RoomsLoading
             return Center(child: CircularProgressIndicator());
           },
         ),
@@ -74,13 +77,17 @@ class HomePage extends StatelessWidget {
 
 class UnseenText extends StatelessWidget {
   //TODO: change this to take Chat object instead
-  Message message;
-  UnseenText({required this.message});
+
+  Room room;
+
+  TextMessage lastMessage = TextMessage(room.entries![0]);
+  UnseenText({required this.room});
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).pushNamed(ChatRoom.routeName);
+        Navigator.of(context).pushNamed(ChatRoom.routeName, arguments: room);
       },
       child: Container(
         height: MediaQuery.of(context).size.width * 0.2,
@@ -99,8 +106,7 @@ class UnseenText extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                    child:
-                        Text("${(message.senderUsername)[0].toUpperCase()}")),
+                    child: Text("${lastMessage.authorUsername.toUpperCase()}")),
               ),
             ),
             Expanded(
@@ -119,8 +125,8 @@ class UnseenText extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("${message.senderUsername}"),
-                          Text("${message.text}"),
+                          Text("${lastMessage.authorUsername}"),
+                          Text("${lastMessage.text}"),
                         ],
                       ),
                     ),
@@ -140,7 +146,7 @@ class UnseenText extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Text("${message.date}",
+                          Text("${lastMessage.timestamp.toString()}",
                               style: DefaultTextStyle.of(context)
                                   .style
                                   .apply(fontSizeFactor: 0.9)),
