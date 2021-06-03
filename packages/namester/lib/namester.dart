@@ -46,14 +46,6 @@ class WsPeerAddress extends PeerAddress {
   String toJson() => '{ "type": "ws", "uri": "${uri.toString()}" }';
 }
 
-/// Prepend id strings with aid:
-class AppiaId {
-  final String id;
-  AppiaId(this.id) : assert(id.startsWith('aid:'));
-  @override
-  String toString() => '$id';
-}
-
 class UserEntry {
   final String username;
   final String id;
@@ -74,6 +66,7 @@ class UserEntry {
     }
     return UserEntry(username, appiaId, address);
   }
+  // TODO: change return type to Map<String, dynamic>
   String toJson() =>
       '{ "id": "$id", "username":"$username", "address": ${address.toJson()} }';
 }
@@ -129,8 +122,8 @@ class NamesterServer {
     return _usernameToAddr[id];
   }
 
-  UserEntry? getFromAppiaId(AppiaId id) {
-    return _usernameToAddr[id.toString()];
+  UserEntry? getFromAppiaId(String id) {
+    return _usernameToAddr[id];
   }
 
   Handler _init() {
