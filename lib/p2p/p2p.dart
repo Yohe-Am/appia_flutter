@@ -2,7 +2,6 @@ import 'dart:collection';
 import 'dart:async';
 
 import 'package:namester/namester.dart';
-export 'package:namester/namester.dart' show AppiaId;
 
 import 'namester_client.dart';
 import 'transports/transports.dart';
@@ -24,7 +23,6 @@ class AppiaConnection {
 /// TODO: break it apart into multiple classes
 ///
 /// Identified responsiblities:
-/// - DONE: comms with the name server
 /// - store/manage ongoing connections, listeners
 /// - an interface for interacting with all connections at once?
 class P2PNode {
@@ -32,12 +30,13 @@ class P2PNode {
   final Map<ListeningAddress, AbstractListener> listeners = new HashMap();
   final Map<String, AppiaConnection> peerConnections = new HashMap();
 
+  late StreamController<AppiaConnection> _incomingConnectionsController;
+
   /// Listen on this to get a stream of connections combind from all registered
   /// AbstractListeners
   late final Stream<AppiaConnection> incomingConnections;
 
-  bool _beingListenedTo = false;
-  late StreamController<AppiaConnection> _incomingConnectionsController;
+  // TODO: support multiple namesters
   AbstractNamester namester;
 
   P2PNode(
@@ -51,29 +50,24 @@ class P2PNode {
       },
     );
 
-    this._incomingConnectionsController = StreamController.broadcast(
-      onListen: () {
-        this._beingListenedTo = true;
-      },
-      onCancel: () {
-        this._beingListenedTo = false;
-      },
-    );
+    this._incomingConnectionsController = StreamController.broadcast();
     this.incomingConnections = this._incomingConnectionsController.stream;
     // .map((connection) => EventedConnection(connection));
   }
 
   void addListener(AbstractListener listener) {
     this.listeners[listener.listeningAddress] = listener;
+
     listener.incomingConnections.listen((conn) {
       // FIXME: so I guess no handshake goes down if we don't have listeners
       // but that's never going to occur I imagine
-      if (this._beingListenedTo) {
+      if (this._incomingConnectionsController.hasListener) {
         this
             ._doHandshake(conn)
             .then((conn) => _incomingConnectionsController.add(conn));
+      } else {
+        throw new Exception("Incoming connection but no one's listening wtf");
       }
-      throw new Exception("Incoming connection but no one's listening wtf");
     }, onError: (e) {
       print("error listening $e");
     }, onDone: () {
@@ -86,7 +80,7 @@ class P2PNode {
     this.peerConnections[peerId] = appiaConn;
 
     // don't store finished connections
-    connection.messageStream.listen(
+    connection.stream.listen(
       null,
       // TODO: test if onDone is emitted when connection goes down erroneously
       onDone: () {
@@ -103,17 +97,22 @@ class P2PNode {
   }
 
   static int _lastAppiaId = 1;
-  Future<AppiaConnection?> connectTo(String id) async {
+  Future<AppiaConnection> connectTo(String id) async {
+    if (peerConnections.containsKey(id))
+      throw Exception("already connected to peer with id $id");
+
     final addr = await this.namester.getAddressForId(id);
-    if (addr == null) throw Exception("unable to find address for id");
+    if (addr == null) throw NoNodeFoundForIdException(id);
+
     final tport = this.transports[addr.transportType];
     if (tport == null)
-      throw Exception("peer transport (${addr.transportType}) not supported");
+      throw PeerTransportUnsupportedException(addr.transportType);
+
     try {
       final connection = await tport.dial(addr);
       return this._doHandshake(connection);
     } catch (e) {
-      throw Exception(
+      throw NetworkException(
           "unable to connect to user (${id.toString()}) at addr (${addr.toString()}): e.print");
     }
   }
@@ -132,4 +131,30 @@ class P2PNode {
     }
     this._incomingConnectionsController.close();
   }
+}
+
+abstract class AppiaException {
+  final dynamic message;
+
+  AppiaException([this.message]);
+
+  String toString() {
+    Object? message = this.message;
+    if (message == null) return "Exception";
+    return "Exception: $message";
+  }
+}
+
+class NoNodeFoundForIdException extends AppiaException {
+  NoNodeFoundForIdException(dynamic id)
+      : super("unable to find address for id: $id");
+}
+
+class PeerTransportUnsupportedException extends AppiaException {
+  PeerTransportUnsupportedException(TransportType type)
+      : super("peer transport (${type.toString()}) not supported");
+}
+
+class NetworkException extends AppiaException {
+  NetworkException([dynamic message]) : super(message);
 }

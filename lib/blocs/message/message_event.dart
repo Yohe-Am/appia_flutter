@@ -1,10 +1,8 @@
 part of 'message_bloc.dart';
 
-abstract class MessageEvent extends Equatable {
+abstract class MessageEvent {
   const MessageEvent();
 
-  @override
-  List<Object> get props => [];
 }
 
 class SendMessage extends MessageEvent {
@@ -22,6 +20,5 @@ class SendMessage extends MessageEvent {
 class LoadMessages extends MessageEvent {
   const LoadMessages();
 
-  @override
-  List<Object> get props => [];
+
 }

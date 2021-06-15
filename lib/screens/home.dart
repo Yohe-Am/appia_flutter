@@ -1,21 +1,25 @@
-import 'package:appia/blocs/message/message_bloc.dart';
-import 'package:appia/blocs/room/room_bloc.dart';
-import 'package:appia/models/models.dart';
-import 'package:appia/models/room.dart';
-import 'package:appia/models/text_message.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'ChatRoom.dart';
-import 'Search.dart';
+import 'package:appia/blocs/room/room_bloc.dart';
+import 'package:appia/models/models.dart';
 
-class HomePage extends StatelessWidget {
-  static const routeName = 'HomePage';
-  RoomBloc roomsBloc = RoomBloc();
+import 'Search.dart';
+import 'ChatRoom.dart';
+
+class HomeScreen extends StatefulWidget {
+  static const String routeName = "home";
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // FIXME: ??
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => roomsBloc..add(LoadRooms()),
+      create: (context) => RoomBloc()..add(LoadRooms()),
       child: Scaffold(
         appBar: AppBar(
           title: Text("Appia"),
@@ -75,7 +79,7 @@ class HomePage extends StatelessWidget {
 }
 
 class UnseenText extends StatelessWidget {
-  Room room;
+  final Room room;
   UnseenText({required this.room});
 
   @override

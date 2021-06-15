@@ -1,12 +1,10 @@
 import 'package:appia/blocs/room/room_bloc.dart';
 import 'package:appia/blocs/message/message_bloc.dart';
-import 'package:appia/models/room.dart';
-import 'package:appia/models/text_message.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../main.dart';
+import 'package:appia/models/models.dart';
 
 class ChatRoom extends StatelessWidget {
   Room room;
@@ -19,7 +17,8 @@ class ChatRoom extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
+    return const Text("TODO");
+    /* return MultiBlocProvider(
       providers: [
         BlocProvider<MessageBloc>(
           create: (context) => messageBloc..add(LoadMessages()),
@@ -104,13 +103,13 @@ class ChatRoom extends StatelessWidget {
           height: 50,
         ),
       ),
-    );
+    ); */
   }
 
   onSelected(BuildContext context, int item) {}
 }
 
-class MessageUI extends StatelessWidget {
+/* class MessageUI extends StatelessWidget {
   TextMessage message;
   MessageUI({required this.message});
   @override
@@ -169,3 +168,4 @@ class MessageUI extends StatelessWidget {
     );
   }
 }
+ */

@@ -9,7 +9,6 @@ import 'transports.dart';
 /// A dumb message format
 ///
 /// TODO: improve
-/// TODO(Yohe): should we make this part of the AbstractConnection interface?
 class EventMessage<T> {
   final String event;
   final T data;
@@ -17,26 +16,14 @@ class EventMessage<T> {
   factory EventMessage.fromJson(Map<String, dynamic> json) =>
       EventMessage(json["event"], json["data"]);
 
-  String toJson() => '{ "event": "$event", "data": ${jsonEncode(data)}}';
+  Map<String, dynamic> toJson() => {"event": event, "data": data};
 }
 
-/// A wrapper over AbstractConnection that provides Socket IO kinda messaging
-///
-/// TODO: consider making this non-genric
-class EventedConnection<C extends AbstractConnection> {
-  final AbstractConnection connection;
-
-  void Function(EventedConnection<C>, CloseReason)? onFinish;
-  void Function(EventedConnection<C>, EventMessage<dynamic>)? onMessage;
-  void Function(EventedConnection<C>, Object err)? onError;
-
+/// A DECORATOR over AbstractConnection that provides Socket IO kinda messaging.
+class EventedConnection<C extends AbstractConnection>
+    extends AbstractConnection {
   final Map<String, void Function(EventedConnection<C> socket, dynamic data)>
       _eventListeners;
-
-  late Stream<dynamic> _messageStream;
-  // The wrapped AbstractConnection will handle closing the sink
-  // ignore: close_sinks
-  late Sink<dynamic> _messageSink;
 
   EventedConnection(
     this.connection, {
@@ -45,20 +32,13 @@ class EventedConnection<C extends AbstractConnection> {
     this.onMessage,
     // this.reconnectOnFailure = true,
   }) : this._eventListeners = new Map() {
-    this._setup();
-  }
-
-  void _setup() {
-    this._messageStream = this.connection.messageStream;
-    this._messageSink = this.connection.messageSink;
-    this._messageStream.listen(this._onData,
+    this.connection.stream.listen(this._onData,
         onDone: this._onDone, onError: this._onError, cancelOnError: true);
   }
 
   // private stuff
 
   void _onData(dynamic dynamicMessage) {
-    print(dynamicMessage);
     try {
       final message =
           EventMessage<dynamic>.fromJson(jsonDecode(dynamicMessage));
@@ -86,25 +66,38 @@ class EventedConnection<C extends AbstractConnection> {
 
   // public stuff
 
+  @override
+  CloseReason? get closeReason => this.connection.closeReason;
+
+  @override
+  PeerAddress get peerAddress => this.connection.peerAddress;
+
+  @override
+  TransportType get type => this.connection.type;
+
+  final AbstractConnection connection;
+
+  void Function(EventedConnection<C>, CloseReason)? onFinish;
+  void Function(EventedConnection<C>, EventMessage<dynamic>)? onMessage;
+  void Function(EventedConnection<C>, Object err)? onError;
+
   bool get isConnected => this.connection.isConnected;
 
   /// Get a new instance of the message stream.
   ///
   /// Message data will be one of the JSON types
   /// `Map<String, dynamic>` for JSON objects.
-  Stream<EventMessage<dynamic>> get messageStream {
-    // Stream<AppiaMessage<Map<String, dynamic>>> get messageStream {
-    if (!this.isConnected) throw NotConnectedException();
+  Stream<EventMessage<dynamic>> get stream {
     return this
-        ._messageStream
+        .connection
+        .stream
         .map((msg) => EventMessage.fromJson(jsonDecode(msg)));
   }
 
   /// Subsribe to events in stream form
   Stream<dynamic> getEventStream(String event) {
-    if (!this.isConnected) throw NotConnectedException();
     return this
-        .messageStream
+        .stream
         .where((msg) => msg.event == event)
         .map((msg) => msg.data);
   }
@@ -112,7 +105,6 @@ class EventedConnection<C extends AbstractConnection> {
   Future<void> reconnect() async {
     print("reconnecting to addr $this.connection.peerAddress");
     await this.connection.reconnect();
-    this._setup();
   }
 
   Future<void> close(CloseReason reason) async {
@@ -121,16 +113,23 @@ class EventedConnection<C extends AbstractConnection> {
     }
   }
 
+  @override
+  Future<void> emit(dynamic message) async {
+    this.connection.emit(message);
+  }
+
   /// Publish events
-  Future<void> emit<T>(EventMessage<T> message) async {
+  Future<void> emitEvent(EventMessage message) async {
     if (!this.isConnected) throw NotConnectedException();
-    print("outgoing message: ${message.data.toString()}");
-    final jsonString = message.toJson();
-    this._messageSink.add(jsonString);
+    final jsonString = jsonEncode(message.toJson());
+    print("outgoing message: $jsonString");
+    this.connection.emit(jsonString);
   }
 
   /// Subscribe to events
-  void listen(
+  ///
+  /// Only supports one listener per event.
+  void setListener(
     String event,
     void Function(EventedConnection<C> connection, dynamic data) listener,
   ) {
@@ -151,7 +150,7 @@ class EventedConnection<C extends AbstractConnection> {
 
     await this.emit(EventMessage(requestEvent, message));
     return this
-        .messageStream
+        .stream
         .firstWhere((msg) => msg.event == responseEvent)
         .timeout(timeout);
 

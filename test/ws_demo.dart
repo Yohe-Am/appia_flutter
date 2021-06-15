@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:appia/blocs/p2p/connection_bloc.dart';
@@ -26,9 +27,10 @@ void main() {
               ))
           .forEach((conn) {
         print("server got connection from ${conn.connection.peerAddress}");
-        conn.listen(
+        conn.setListener(
           "echo",
-          (connection, data) => connection.emit(EventMessage("echo", data)),
+          (connection, data) =>
+              connection.emitEvent(EventMessage("echo", data)),
         );
       });
     } catch (err) {
@@ -59,17 +61,14 @@ class DemoConnectionCubit extends Cubit<DemoConnectionState> {
       return;
     }
     this.connBloc = ConnectionBloc(conn, reconnect: true);
-    this.connBloc!.eventedConnection.onMessage = (_, msg) {
-      msgsCubit.addMessage("incoming " + msg.toJson());
-    };
-    this.connBloc!.eventedConnection.onError = (_, e) {
+    this.connBloc!.eventedConnection.stream.listen((msg) {
+      msgsCubit.addMessage("incoming " + jsonEncode(msg.toJson()));
+    }, onError: (e) {
       msgsCubit.addMessage("error from evented connection: $e");
-    };
-    this.connBloc!.eventedConnection.onFinish = (conn, e) {
-      msgsCubit
-          .addMessage("connection finished: ${conn.connection.closeReason}");
+    }, onDone: () {
+      msgsCubit.addMessage("connection finished: ${conn.closeReason}");
       emit(DemoConnectionState.NotConnected);
-    };
+    });
     msgsCubit
         .addMessage("connected to peer at: ${conn.peerAddress.toString()}");
     emit(DemoConnectionState.Connected);
@@ -89,8 +88,8 @@ class DemoConnectionCubit extends Cubit<DemoConnectionState> {
 
   void sendMessage(EventMessage<dynamic> msg) {
     if (this.connBloc == null) throw "Not connected";
-    this.connBloc!.eventedConnection.emit(msg).then(
-      (v) => msgsCubit.addMessage("outgoing: " + msg.toJson()),
+    this.connBloc!.eventedConnection.emitEvent(msg).then(
+      (v) => msgsCubit.addMessage("outgoing: " + jsonEncode(msg.toJson())),
       onError: (e) {
         msgsCubit.addMessage("error sending message $e");
       },

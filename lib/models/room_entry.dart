@@ -15,11 +15,17 @@ abstract class RoomEntry {
     final type = json['entryType'] as String?;
     switch (type) {
       case null:
-        throw Exception('Invalid JSON: no entryType');
+        throw InvalidJSONException(
+          json,
+          'no entryType',
+        );
       case "message":
         return Message.fromJson(json);
       default:
-        throw Exception('Invalid JSON: unrecognized entryType ($type)');
+        throw InvalidJSONException(
+          json,
+          'unrecognized entryType ($type)',
+        );
     }
   }
 }

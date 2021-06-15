@@ -31,23 +31,35 @@ abstract class AbstractListener<C extends AbstractConnection> {
   void close();
 }
 
+/// FIXME: Should we hoist the reconnection features upwards?
 abstract class AbstractConnection {
   TransportType get type;
 
   bool get isConnected;
+
   PeerAddress get peerAddress;
 
-  /* Get a new instance of the incoming message stream. */
-  Stream<dynamic> get messageStream;
-  /*  Get a reference to the message sink. */
-  Sink<dynamic> get messageSink;
+  /// Get a refernce of the incoming stream.
+  /// A broadcast stream, doesn't buffer messages.
+  ///
+  /// This will keep working even after a reconnection.
+  Stream<dynamic> get stream;
+
+  /// Get a reference to the outgiong sink.
+  /// This will keep working even after a reconnection.
+  // Sink<dynamic> get sink;
+
+  /// I don't get sinks so use this to send messages.
+  Future<void> emit(dynamic message);
+
   Future<void> close(CloseReason reason);
 
   /// Use this to reconnect when connection fails.
   ///
   /// This closes the connection if not closed with a [CloseCode.NormalClosure]
   Future<void> reconnect();
-  /* This will be null if it's not closed */
+
+  /// This will be null if it's not closed
   CloseReason? get closeReason;
 }
 
