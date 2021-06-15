@@ -19,7 +19,7 @@ void main() async {
           ));
           var conn =
               new EventedConnection(await listener.incomingConnections.first);
-          var msg = await conn.messageStream.first;
+          var msg = await conn.stream.first;
           print("msg: ${msg.toJson()}");
         } catch (err) {
           print("err $err");

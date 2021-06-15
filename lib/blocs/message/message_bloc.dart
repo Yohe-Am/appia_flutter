@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:appia/AppiaData.dart';
 import 'package:appia/models/text_message.dart';
 import 'package:bloc/bloc.dart';
-import 'package:equatable/equatable.dart';
 
 part 'message_event.dart';
 part 'message_state.dart';

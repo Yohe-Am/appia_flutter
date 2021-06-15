@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:appia/AppiaData.dart';
-import 'package:appia/models/room.dart';
-import 'package:appia/models/text_message.dart';
+import 'package:appia/models/models.dart';
 import 'package:bloc/bloc.dart';
-import 'package:equatable/equatable.dart';
 
 part 'room_event.dart';
 part 'room_state.dart';
