@@ -1,38 +1,40 @@
-import 'package:appia/p2p/p2p.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:appia/p2p/transports/transports.dart';
 
 // -- EVENTS
 
-abstract class ConnectionEvent {}
+abstract class ConnectionEvent {
+  const ConnectionEvent();
+}
 
-class Reconnect extends ConnectionEvent {}
+class Reconnect extends ConnectionEvent {
+  const Reconnect._modulePrivate();
+}
 
 // class Connect extends ConnectionEvent {}
 
 class StopConnection extends ConnectionEvent {
   final CloseReason reason;
-  StopConnection(this.reason);
+  const StopConnection(this.reason);
 }
 
 class Disconnected extends ConnectionEvent {
   final CloseReason reason;
-  Disconnected(this.reason);
+  const Disconnected(this.reason);
 }
 
 class ConnectionError extends ConnectionEvent {
   final Object error;
-  ConnectionError(this.error);
+  const ConnectionError(this.error);
 }
 
 // -- STATE
 
-enum ConnectionState { Connected, Connecting, NotConnected }
+enum ConnectionState { Connected, Connecting, Closed }
 
 // -- BLOC
 
 /// This guy's responsible for reconnection when connection goes down.
-///   "...ya can call me TCP"
 ///
 /// TODO: find a way to make this get this started without needing a pre-existing
 /// connection.
@@ -40,10 +42,9 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ConnectionState> {
   // TODO(Yohe): figure out where to start using EventedConnection
   // right now it's here but I can't say if it's the right place
 
-  /// ConnectioinBloc doesn't make use of `EventedConnection` `onMessage`
-  /// slot. Listen for ConnectionError
   late final EventedConnection eventedConnection;
   bool reconnect;
+  Duration reconnectionDuration;
 
   /// The dialer is responsible for reconnection.
   /// You can still add a Reconnect event from elsewhere to
@@ -51,15 +52,21 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ConnectionState> {
   ConnectionBloc(
     AbstractConnection connection, {
     this.reconnect = false,
+    this.reconnectionDuration = const Duration(seconds: 1),
   }) : super(ConnectionState.Connected) {
     // TODO: figure out a sensible hierarchy of connections
     this.eventedConnection = new EventedConnection(
       connection,
       onError: this._onErrorHandler,
       onFinish: this._onFinishHandler,
+      onMessage: this._onMessageHandler,
     );
   }
   // factory ConnectionBloc.connect() => ConnectionBloc()..add(Connect());
+
+  void _onMessageHandler(EventedConnection socket, EventMessage<dynamic> msg) {
+    //
+  }
 
   void _onErrorHandler(EventedConnection socket, Object err) {
     this.add(ConnectionError(err));
@@ -71,21 +78,28 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ConnectionState> {
 
   @override
   Stream<ConnectionState> mapEventToState(ConnectionEvent event) async* {
-    print("got event: ${event.toString()}");
-    print("reconnect?: ${this.reconnect}");
-    if (event is ConnectionError || event is Disconnected) {
-      yield ConnectionState.Connecting;
-      await Future.delayed(const Duration(seconds: 1));
+    if (event is ConnectionError) {
       if (this.reconnect) {
-        this.add(Reconnect());
+        // reconnect if allowed
+        yield ConnectionState.Connecting;
+        await Future.delayed(reconnectionDuration);
+        this.add(Reconnect._modulePrivate());
       } else {
-        yield ConnectionState.NotConnected;
+        // close bloc
+        yield ConnectionState.Closed;
+        await this.close();
       }
+    } else if (event is Disconnected) {
+      // close bloc
+      yield ConnectionState.Closed;
+      await this.close();
     } else if (event is StopConnection) {
+      // close bloc
       this.reconnect = false;
-      this.eventedConnection.close(event.reason);
-      yield ConnectionState.NotConnected;
+      yield ConnectionState.Closed;
+      await this.close(event.reason);
     } else if (event is Reconnect) {
+      // start reconnection
       this.reconnect = true;
       yield ConnectionState.Connecting;
       await this.eventedConnection.reconnect();
@@ -98,7 +112,8 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ConnectionState> {
     CloseReason reason = const CloseReason(
         code: CloseCode.GoingAway, message: "discarding connection bloc"),
   ]) async {
-    this.eventedConnection.close(reason);
     await super.close();
+    if (this.eventedConnection.isConnected)
+      this.eventedConnection.close(reason);
   }
 }

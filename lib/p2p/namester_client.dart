@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:http/http.dart';
 import 'package:namester/namester.dart';
 
+import 'p2p.dart';
+
 /// Interface for interacting with a name server
 abstract class AbstractNamester {
   /// Returns null if id not recognized
@@ -36,11 +38,12 @@ class HttpNamesterProxy extends AbstractNamester {
         case HttpStatus.notFound:
           return null;
         default:
-          throw Exception(
-              "nameserver response not recognized: ${response.toString()}");
+          throw UnsupportedError(
+            "nameserver response not recognized: ${response.toString()}",
+          );
       }
     } catch (e) {
-      throw Exception("error talking with nameserver: ${e.toString()}");
+      throw NetworkException("error talking with nameserver: ${e.toString()}");
     }
   }
 
@@ -58,11 +61,11 @@ class HttpNamesterProxy extends AbstractNamester {
         case HttpStatus.notFound:
           return null;
         default:
-          throw Exception(
+          throw UnimplementedError(
               "nameserver response not recognized: ${response.toString()}");
       }
     } catch (e) {
-      throw Exception("error talking with nameserver: ${e.toString()}");
+      throw NetworkException("error talking with nameserver: ${e.toString()}");
     }
   }
 
@@ -78,11 +81,12 @@ class HttpNamesterProxy extends AbstractNamester {
         case HttpStatus.created:
           return;
         default:
-          throw Exception(
-              "nameserver response not recognized: ${response.toString()}");
+          throw UnimplementedError(
+            "nameserver response not recognized: ${response.toString()}",
+          );
       }
     } catch (e) {
-      throw Exception("error talking with nameserver: ${e.toString()}");
+      throw NetworkException("error talking with nameserver: ${e.toString()}");
     }
   }
 }

@@ -1,6 +1,14 @@
+import 'dart:convert';
+
 import 'package:appia/models/text_message.dart';
+import 'package:appia/p2p/p2p.dart';
 
 import 'room_entry.dart';
+
+class InvalidJSONException extends AppiaException {
+  InvalidJSONException(Map<String, dynamic> json, String issue)
+      : super("Invalid JSON: $issue\n${jsonEncode(json)}");
+}
 
 abstract class Message extends RoomEntry {
   final String authorId;
@@ -22,7 +30,10 @@ abstract class Message extends RoomEntry {
     if (json['text'] != null) {
       return TextMessage.fromJson(json);
     }
-    throw Exception('Invalid JSON: unrecognized text message type');
+    throw InvalidJSONException(
+      json,
+      'unrecognized text message type',
+    );
   }
   /*  @override
   Map<String, dynamic> toJson() {

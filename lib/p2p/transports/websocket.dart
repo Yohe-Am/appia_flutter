@@ -1,5 +1,6 @@
 // Yohe: I just copied the client we used from offTime and made it null-safe. Lot's of work left to be done
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:web_socket_channel/web_socket_channel.dart' as ws_channel;
@@ -7,6 +8,8 @@ import 'package:web_socket_channel/io.dart' as ws_channel_io;
 import 'package:web_socket_channel/status.dart' as ws_status;
 
 import 'transports.dart';
+
+const APPIA_WS_PROTOCOL = "appia";
 
 class WsListeningAddress extends ListeningAddress {
   final InternetAddress host;
@@ -29,12 +32,9 @@ class WsTransport extends AbstractTransport<WsListener, WsConnection> {
 
   Future<WsConnection> dial(PeerAddress address) async {
     if (address is WsPeerAddress) {
-      // TODO: make connect call async
-      final channel = ws_channel.WebSocketChannel.connect(
-        address.uri,
-        protocols: ["appia"],
-      );
-      return WsConnection(address, channel);
+      final connection = WsConnection(address);
+      await connection.reconnect();
+      return connection;
     } else {
       throw Exception(
           "invalid transport type for websocket transport: ${address.transportType}");
@@ -57,69 +57,111 @@ class WsTransport extends AbstractTransport<WsListener, WsConnection> {
 
 /* 
  * WsConnection with event based interface.
- * 
  * */
 class WsConnection extends AbstractConnection {
-  @override
-  TransportType get type => TransportType.WebSockets;
+  bool _connected = false;
+  ws_channel.WebSocketChannel? _channel;
+  // late Stream<dynamic> _streamAsBrodacast;
 
-  bool _connected = true;
-  ws_channel.WebSocketChannel _channel;
-  late Stream<dynamic> _streamAsBrodacast;
+  late final StreamController<dynamic> _incomingStreamController;
+  // late final StreamController<dynamic> _outgoingSinkController;
+
+  /// This starts out unconnected if channel is not provided.
+  /// User [`reconnect()`] to start the connection.
+  WsConnection(this.peerAddress, [ws_channel.WebSocketChannel? channel]) {
+    _incomingStreamController = StreamController.broadcast();
+    stream = _incomingStreamController.stream;
+
+    // _outgoingSinkController = StreamController();
+    // _outgoingSinkController.stream.listen((event) {
+    // });
+    // sink = _outgoingSinkController.sink;
+
+    if (channel != null) _setChannel(channel);
+  }
+
+  void _setChannel(ws_channel.WebSocketChannel channel) {
+    // _streamAsBrodacast = channel.stream.asBroadcastStream();
+    channel.stream.listen(
+      (msg) {
+        if (this._incomingStreamController.hasListener) {
+          _incomingStreamController.add(msg);
+        }
+      },
+      onDone: () {
+        _connected = false;
+        _incomingStreamController.close();
+      },
+      onError: (e, s) {
+        _connected = false;
+        if (_incomingStreamController.hasListener) {
+          _incomingStreamController.addError(e, s);
+        }
+      },
+      // cancelOnError: true,
+    );
+    this._channel = channel;
+    this._connected = true;
+  }
+
+  // PUBLIC stuff
+
+  @override
+  final TransportType type = TransportType.WebSockets;
 
   final WsPeerAddress peerAddress;
-
-  WsConnection(
-    this.peerAddress,
-    this._channel,
-  ) {
-    this._streamAsBrodacast = _channel.stream.asBroadcastStream();
-    this._streamAsBrodacast.listen(
-      null,
-      onDone: () {
-        this._connected = false;
-      },
-      onError: (_, __) {
-        this._connected = false;
-      },
-      cancelOnError: true,
-    );
-  }
 
   @override
   bool get isConnected => this._connected;
 
   @override
-  Stream<dynamic> get messageStream {
-    if (!this._connected) throw WsNotConnectedException();
-    return this._streamAsBrodacast;
-  }
+  late final Stream<dynamic> stream;
 
-  @override
-  Sink<dynamic> get messageSink {
-    if (!this._connected) throw WsNotConnectedException();
-    return this._channel.sink;
-  }
+  // @override
+  // late final StreamSink<dynamic> sink;
 
   @override
   Future<void> reconnect() async {
-    await this.close(
-        CloseReason(code: CloseCode.NormalClosure, message: "reconnecting"));
-    print("connecting websocket to addr $this.peerAddress");
-    final channel = ws_channel.WebSocketChannel.connect(this.peerAddress.uri);
-    this._streamAsBrodacast = channel.stream.asBroadcastStream();
-    this._channel = channel;
-    this._connected = true;
+    if (this.isConnected) throw Exception("Already connected");
+    print("connecting websocket to addr $peerAddress");
+    // TODO: make connect call async
+    // final channel = ws_channel.WebSocketChannel.connect(
+    //   peerAddress.uri,
+    //   protocols: [APPIA_WS_PROTOCOL],
+    // );
+    final channel = ws_channel_io.IOWebSocketChannel.connect(
+      peerAddress.uri,
+      protocols: [APPIA_WS_PROTOCOL],
+    );
+    _setChannel(channel);
   }
 
   @override
   Future<void> close(CloseReason reason) async {
     if (this._connected) {
-      await this._channel.sink.close(
+      await this._channel!.sink.close(
           WsConnection._closeCodeToWsStatus(reason.code), reason.message);
       this._connected = false;
     }
+    this._incomingStreamController.close();
   }
+
+  Future<void> emit(dynamic message) async {
+    if (!this._connected) throw WsNotConnectedException();
+    this._channel!.sink.add(message);
+  }
+
+  @override
+  CloseReason? get closeReason {
+    final closeCode = this._channel?.closeCode;
+    if (closeCode == null) return null;
+    return CloseReason(
+      code: WsConnection._wsStatusToCloseCode(closeCode),
+      message: this._channel!.closeReason,
+    );
+  }
+
+  // STATIC stuff
 
   static CloseCode? _wsStatusToCloseCode(int? statusCode) {
     switch (statusCode) {
@@ -182,19 +224,6 @@ class WsConnection extends AbstractConnection {
         throw new Exception("unrecognized CloseCode");
     }
   }
-
-  Future<void> emit(dynamic message) async {
-    this._channel.sink.add(message);
-  }
-
-  @override
-  CloseReason? get closeReason {
-    final closeCode = this._channel.closeCode;
-    if (closeCode == null) return null;
-    return CloseReason(
-        code: WsConnection._wsStatusToCloseCode(closeCode),
-        message: this._channel.closeReason);
-  }
 }
 
 class WsListener extends AbstractListener<WsConnection> {
@@ -220,9 +249,18 @@ class WsListener extends AbstractListener<WsConnection> {
                 final connInfo = request.connectionInfo!;
 
                 // we shan't use the stream version of the transformer
-                // we won't be
-                // TODO: make use of WebSocket's protocol feature?
-                var socket = await WebSocketTransformer.upgrade(request);
+                // we won't be able to send back responses (401s)
+                // to the requests that are filtered out otherwise
+                // TODO: read up and make use of WebSocket's protocol feature
+
+                // ignore: close_sinks
+                var socket = await WebSocketTransformer.upgrade(
+                  request,
+                  protocolSelector: (protocols) {
+                    if (protocols.contains(APPIA_WS_PROTOCOL))
+                      return APPIA_WS_PROTOCOL;
+                  },
+                );
                 final peerAddress = new WsPeerAddress(
                   new Uri(
                     host: connInfo.remoteAddress.host,
@@ -234,9 +272,6 @@ class WsListener extends AbstractListener<WsConnection> {
                   new ws_channel_io.IOWebSocketChannel(socket),
                 );
               } else {
-                // print(
-                //   "invalid request found: ${request.uri.scheme}://${request.uri.host}:${request.uri.port}${request.uri.path}",
-                // );
                 print(
                   "invalid request found: ${request.uri.toString()}",
                 );

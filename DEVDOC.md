@@ -8,6 +8,8 @@
 - [ ] Message persistance
 - [x] Name server
   - [x] Client
+- [ ] Manage namesters screen
+- [ ] Stop/start listening button
 
 ## design-doc
 
@@ -67,4 +69,6 @@
 
 ### NAT Translation
 
-Is it out of scope?
+Is it out of scope? 
+
+Yeah, it is. It most definitely is.
