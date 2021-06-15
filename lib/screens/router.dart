@@ -7,8 +7,8 @@ Route generateRoute(RouteSettings settings) {
     return MaterialPageRoute(builder: (context) => HomeScreen());
   else if (settings.name == SetupScreen.routeName)
     return MaterialPageRoute(builder: (context) => SetupScreen());
-  else if (settings.name == Search.routeName) {
-    return MaterialPageRoute(builder: (context) => Search());
+  else if (settings.name == SearchScreen.routeName) {
+    return MaterialPageRoute(builder: (context) => SearchScreen());
   }
 
   return MaterialPageRoute(builder: (context) => LogoScreen());

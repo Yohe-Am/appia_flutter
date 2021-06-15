@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:appia/blocs/screens/search.dart';
 import 'package:appia/blocs/session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -62,7 +63,9 @@ class MyApp extends StatelessWidget {
         child: MultiBlocProvider(
           providers: [
             BlocProvider(create: (context) => P2PBloc(context.read<P2PNode>())),
-            BlocProvider(create: (context) => SessionBloc())
+            BlocProvider(create: (context) => SessionBloc()),
+            BlocProvider(
+                create: (context) => SearchScreenBloc(context.read<P2PBloc>()))
           ],
           child: MaterialApp(
             title: 'Appia',

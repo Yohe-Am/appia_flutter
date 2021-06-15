@@ -101,19 +101,19 @@ class P2PNode {
     if (peerConnections.containsKey(id))
       throw Exception("already connected to peer with id $id");
 
-    final addr = await this.namester.getAddressForId(id);
-    if (addr == null) throw NoNodeFoundForIdException(id);
+    final entry = await this.namester.getEntryForId(id);
+    if (entry == null) throw NoNodeFoundForIdException(id);
 
-    final tport = this.transports[addr.transportType];
+    final tport = this.transports[entry.address.transportType];
     if (tport == null)
-      throw PeerTransportUnsupportedException(addr.transportType);
+      throw PeerTransportUnsupportedException(entry.address.transportType);
 
     try {
-      final connection = await tport.dial(addr);
+      final connection = await tport.dial(entry.address);
       return this._doHandshake(connection);
     } catch (e) {
       throw NetworkException(
-          "unable to connect to user (${id.toString()}) at addr (${addr.toString()}): e.print");
+          "unable to connect to user (${id.toString()}) at addr (${entry.toString()}): e.print");
     }
   }
 

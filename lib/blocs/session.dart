@@ -1,6 +1,5 @@
 import 'package:appia/models/models.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:appia/p2p/transports/transports.dart';
 
 // -- EVENTS
 

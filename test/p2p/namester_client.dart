@@ -18,13 +18,13 @@ void main() async {
   try {
     // get-peer-address username
     {
-      final addr = await client.getAddressForUsername(entry.username);
+      final addr = await client.getEntryForUsername(entry.username);
       assert(addr != null);
       assert(addr!.toJson() == entry.address.toJson());
     }
     // get-peer-address id
     {
-      final addr = await client.getAddressForId(entry.id);
+      final addr = await client.getEntryForId(entry.id);
       assert(addr != null);
       assert(addr!.toJson() == entry.address.toJson());
     }
@@ -40,7 +40,7 @@ void main() async {
             testEntry.id, testEntry.username, testEntry.address);
       }
       {
-        final addr = await client.getAddressForId(testEntry.id);
+        final addr = await client.getEntryForId(testEntry.id);
         assert(addr != null);
         assert(addr!.toJson() == testEntry.address.toJson());
       }

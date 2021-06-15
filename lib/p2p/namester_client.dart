@@ -9,10 +9,10 @@ import 'p2p.dart';
 /// Interface for interacting with a name server
 abstract class AbstractNamester {
   /// Returns null if id not recognized
-  Future<PeerAddress?> getAddressForId(String id);
+  Future<UserEntry?> getEntryForId(String id);
 
   /// Returns null if username not recognized
-  Future<PeerAddress?> getAddressForUsername(String username);
+  Future<UserEntry?> getEntryForUsername(String username);
   Future<void> updateMyAddress(String id, String username, PeerAddress address);
 }
 
@@ -25,7 +25,7 @@ class HttpNamesterProxy extends AbstractNamester {
 
   HttpNamesterProxy(this._nameserverAddress) : _client = new Client();
 
-  Future<PeerAddress?> getAddressForId(String id) async {
+  Future<UserEntry?> getEntryForId(String id) async {
     try {
       final response = await _client.post(
         _nameserverAddress.resolve("/get-peer-address"),
@@ -34,7 +34,7 @@ class HttpNamesterProxy extends AbstractNamester {
       switch (response.statusCode) {
         case HttpStatus.ok:
           final entry = UserEntry.fromJson(jsonDecode(response.body));
-          return entry.address;
+          return entry;
         case HttpStatus.notFound:
           return null;
         default:
@@ -48,7 +48,7 @@ class HttpNamesterProxy extends AbstractNamester {
   }
 
   @override
-  Future<PeerAddress?> getAddressForUsername(String username) async {
+  Future<UserEntry?> getEntryForUsername(String username) async {
     try {
       final response = await _client.post(
         _nameserverAddress.resolve("/get-peer-address"),
@@ -57,7 +57,7 @@ class HttpNamesterProxy extends AbstractNamester {
       switch (response.statusCode) {
         case HttpStatus.ok:
           final entry = UserEntry.fromJson(jsonDecode(response.body));
-          return entry.address;
+          return entry;
         case HttpStatus.notFound:
           return null;
         default:
@@ -93,11 +93,11 @@ class HttpNamesterProxy extends AbstractNamester {
 
 /// Namester that always returns the same peerAddress
 class DumbNamester extends AbstractNamester {
-  final PeerAddress universalAddress;
+  final UserEntry universalAddress;
 
   DumbNamester(this.universalAddress);
   @override
-  Future<PeerAddress?> getAddressForId(String id) async {
+  Future<UserEntry?> getEntryForId(String id) async {
     return this.universalAddress;
   }
 
@@ -108,7 +108,7 @@ class DumbNamester extends AbstractNamester {
   }
 
   @override
-  Future<PeerAddress?> getAddressForUsername(String username) async {
+  Future<UserEntry?> getEntryForUsername(String username) async {
     return this.universalAddress;
   }
 }

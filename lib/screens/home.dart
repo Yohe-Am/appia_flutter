@@ -1,3 +1,4 @@
+import 'package:appia/appia.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:appia/blocs/room/room_bloc.dart';
 import 'package:appia/models/models.dart';
 
-import 'Search.dart';
+import 'search.dart';
 import 'ChatRoom.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             IconButton(
               onPressed: () {
-                Navigator.of(context).pushNamed(Search.routeName);
+                Navigator.of(context).pushNamed(SearchScreen.routeName);
               },
               icon: Icon(Icons.search),
             ),

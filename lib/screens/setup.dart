@@ -19,7 +19,8 @@ class SetupScreen extends StatefulWidget {
 }
 
 class _SetupScreenState extends State<SetupScreen> {
-  String _username = "auser_69420";
+  // String _username = "auser_69420";
+  String _username = "v";
   String _id = "gnirtsmodnaramai";
   // todo: replace by current ip address
   InternetAddress _listeningHost = InternetAddress("192.168.8.104");
@@ -50,8 +51,8 @@ class _SetupScreenState extends State<SetupScreen> {
                 validator: (value) {
                   if (value == null || value.isEmpty) return "Username's empty";
                   final trimmedValue = value.trim();
-                  if (trimmedValue.length < 5)
-                    return "Username length shorter than five";
+                  // if (trimmedValue.length < 5)
+                  // return "Username length shorter than five";
                   // if (trimmedValue.contains(RegExp(r'^[A-Za-z0-9_]')))
                   // return "Only [A-Za-z0-9_] classes allowed in Username";
                   return null;
@@ -176,7 +177,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
                             // TODO: loading screen shit
 
-                            final actualId = "aid:{$this._id}";
+                            final actualId = "aid:${this._id}";
                             // iife
                             () async {
                               final p2pNode = context.read<P2PNode>();
