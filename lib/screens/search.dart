@@ -1,4 +1,5 @@
 import 'package:appia/blocs/screens/search.dart';
+import 'package:appia/screens/userDetail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -46,7 +47,10 @@ class _SearchScreenState extends State<SearchScreen> {
                           subtitle: Text(
                             "${state.users[index].id} | ${state.users[index].address.toJson()}",
                           ),
-                          onTap: () {},
+                          onTap: () => Navigator.of(context).pushNamed(
+                            UserDetailScreen.routeName,
+                            arguments: state.users[index],
+                          ),
                         );
                       })
                   : const Text("No results")

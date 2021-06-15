@@ -9,6 +9,7 @@ part of 'room.dart';
 Room _$RoomFromJson(Map<String, dynamic> json) {
   return $checkedNew('Room', json, () {
     final val = Room(
+      $checkedConvert(json, 'id', (v) => v as String),
       $checkedConvert(json, 'type', (v) => _$enumDecode(_$RoomTypeEnumMap, v)),
       $checkedConvert(
           json,
@@ -16,21 +17,15 @@ Room _$RoomFromJson(Map<String, dynamic> json) {
           (v) => (v as List<dynamic>)
               .map((e) => User.fromJson(e as Map<String, dynamic>))
               .toList()),
-      $checkedConvert(
-          json,
-          'entries',
-          (v) => (v as List<dynamic>)
-              .map((e) => RoomEntry.fromJson(e as Map<String, dynamic>))
-              .toList()),
     );
     return val;
   });
 }
 
 Map<String, dynamic> _$RoomToJson(Room instance) => <String, dynamic>{
+      'id': instance.id,
       'users': instance.users,
       'type': _$RoomTypeEnumMap[instance.type],
-      'entries': instance.entries,
     };
 
 K _$enumDecode<K, V>(

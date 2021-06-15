@@ -1,13 +1,9 @@
-import 'package:appia/appia.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:appia/blocs/room/room_bloc.dart';
-import 'package:appia/models/models.dart';
 
 import 'search.dart';
-import 'ChatRoom.dart';
 
 class HomeScreen extends StatefulWidget {
   static const String routeName = "home";
@@ -19,66 +15,58 @@ class _HomeScreenState extends State<HomeScreen> {
   // FIXME: ??
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => RoomBloc()..add(LoadRooms()),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text("Appia"),
-          actions: [
-            IconButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed(SearchScreen.routeName);
-              },
-              icon: Icon(Icons.search),
-            ),
-            PopupMenuButton<int>(
-                onSelected: (item) => onSelected(context, item),
-                itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 0,
-                        child: Text('Settings'),
-                      ),
-                      PopupMenuItem(
-                        value: 1,
-                        child: Text('Blocked List'),
-                      ),
-                      PopupMenuItem(
-                        value: 1,
-                        child: Text('Log out'),
-                      ),
-                    ]),
-          ],
-        ),
-        body: BlocBuilder<RoomBloc, RoomState>(
-          builder: (_, state) {
-            if (state is RoomsLoadFailure) {
-              return Text('Could not load chats');
-            }
-            if (state is RoomsLoadSuccess) {
-              final chats = state.rooms;
-
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.85,
-                width: MediaQuery.of(context).size.width,
-                padding: EdgeInsets.all(20),
-                child: ListView.builder(
-                  itemCount: chats.length,
-                  itemBuilder: (context, idx) => UnseenText(room: chats[idx]),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Appia"),
+        // TODO: display for listener status
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).pushNamed(SearchScreen.routeName);
+            },
+            icon: Icon(Icons.search),
+          ),
+          PopupMenuButton<int>(
+              onSelected: (item) => (context, item) {},
+              itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 0,
+                      child: Text('Settings'),
+                    ),
+                    PopupMenuItem(
+                      value: 1,
+                      child: Text('Blocked List'),
+                    ),
+                    PopupMenuItem(
+                      value: 1,
+                      child: Text('Log out'),
+                    ),
+                  ]),
+        ],
+      ),
+      body: BlocBuilder<RoomBloc, RoomState>(
+        builder: (_, state) {
+          if (state is RoomsLoadSuccess) {
+            final chats = state.rooms;
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              width: MediaQuery.of(context).size.width,
+              padding: EdgeInsets.all(20),
+              child: ListView.builder(
+                itemCount: chats.length,
+                itemBuilder: (context, idx) => ListTile(
+                  title: Text(chats[idx].users.toString()),
                 ),
-              );
-            }
-            //print(state);
-            // RoomsLoading
-            return Center(child: CircularProgressIndicator());
-          },
-        ),
+              ),
+            );
+          }
+          return Center(child: CircularProgressIndicator());
+        },
       ),
     );
   }
-
-  onSelected(BuildContext context, int item) {}
 }
-
+/* 
 class UnseenText extends StatelessWidget {
   final Room room;
   UnseenText({required this.room});
@@ -167,3 +155,4 @@ class UnseenText extends StatelessWidget {
     );
   }
 }
+ */

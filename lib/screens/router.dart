@@ -1,4 +1,9 @@
+import 'package:appia/blocs/p2p/p2p.dart';
+import 'package:appia/blocs/screens/userDetail.dart';
+import 'package:appia/screens/userDetail.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:namester/namester.dart';
 
 import 'screens.dart';
 
@@ -9,7 +14,14 @@ Route generateRoute(RouteSettings settings) {
     return MaterialPageRoute(builder: (context) => SetupScreen());
   else if (settings.name == SearchScreen.routeName) {
     return MaterialPageRoute(builder: (context) => SearchScreen());
+  } else if (settings.name == UserDetailScreen.routeName) {
+    final entry = settings.arguments as UserEntry;
+    return MaterialPageRoute(
+      builder: (context) => BlocProvider(
+        create: (context) => UserDetailScreenBloc(context.read<P2PBloc>()),
+        child: UserDetailScreen(entry: entry),
+      ),
+    );
   }
-
   return MaterialPageRoute(builder: (context) => LogoScreen());
 }

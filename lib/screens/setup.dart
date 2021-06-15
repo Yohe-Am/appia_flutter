@@ -163,84 +163,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 },
               ),
               ElevatedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          final form = this._formKey.currentState;
-                          if (form != null && form.validate()) {
-                            form.save();
-
-                            // FIXME: replace with bloc
-                            setState(() {
-                              _isLoading = true;
-                            });
-
-                            // TODO: loading screen shit
-
-                            final actualId = "aid:${this._id}";
-                            // iife
-                            () async {
-                              final p2pNode = context.read<P2PNode>();
-                              // check if namester address is true
-                              try {
-                                final namesterClient =
-                                    HttpNamesterProxy(_namesterAddress);
-                                // TODO: replace this with a scheme that doesn't
-                                // rely on update
-                                await namesterClient.updateMyAddress(
-                                  actualId,
-                                  this._username,
-                                  WsPeerAddress(
-                                    Uri(
-                                        scheme: "ws",
-                                        host: this._listeningHost.address,
-                                        port: this._listeningPort),
-                                  ),
-                                );
-                                p2pNode.namester = namesterClient;
-                              } catch (e) {
-                                throw Exception(
-                                    "unable to contact name server: $e");
-                              }
-
-                              // start a listener
-                              try {
-                                final listener = await p2pNode
-                                    .transports[TransportType.WebSockets]!
-                                    .listen(
-                                  WsListeningAddress(
-                                    this._listeningHost,
-                                    this._listeningPort,
-                                  ),
-                                );
-                                p2pNode.addListener(listener);
-                              } catch (e) {
-                                throw Exception(
-                                    "unable to listen at address: $e");
-                              }
-                              return User(this._username, actualId);
-                            }()
-                                .then(
-                              (user) {
-                                context.read<SessionBloc>().add(Initiate(user));
-                                Navigator.of(context).pushNamedAndRemoveUntil(
-                                  HomeScreen.routeName,
-                                  (route) => false,
-                                );
-                              },
-                              onError: (error, stackTrace) {
-                                print(error);
-                                print(stackTrace);
-                              },
-                            ).whenComplete(
-                              () {
-                                setState(() {
-                                  _isLoading = false;
-                                });
-                              },
-                            );
-                          }
-                        },
+                  onPressed: _isLoading ? null : _doSetup,
                   child: _isLoading
                       ? const Text("Loading...")
                       : const Text("Log in"))
@@ -249,5 +172,78 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
       ),
     );
+  }
+
+  void _doSetup() {
+    final form = this._formKey.currentState;
+    if (form != null && form.validate()) {
+      form.save();
+
+      // FIXME: replace with bloc
+      setState(() {
+        _isLoading = true;
+      });
+
+      // TODO: loading screen shit
+
+      final actualId = "aid:${this._id}";
+      // iife
+      () async {
+        final p2pNode = context.read<P2PNode>();
+        // check if namester address is true
+        try {
+          final namesterClient = HttpNamesterProxy(_namesterAddress);
+          // TODO: replace this with a scheme that doesn't
+          // rely on update
+          await namesterClient.updateMyAddress(
+            actualId,
+            this._username,
+            WsPeerAddress(
+              Uri(
+                  scheme: "ws",
+                  host: this._listeningHost.address,
+                  port: this._listeningPort),
+            ),
+          );
+          p2pNode.namester = namesterClient;
+        } catch (e) {
+          throw Exception("unable to contact name server: $e");
+        }
+
+        // start a listener
+        try {
+          final listener =
+              await p2pNode.transports[TransportType.WebSockets]!.listen(
+            WsListeningAddress(
+              this._listeningHost,
+              this._listeningPort,
+            ),
+          );
+          p2pNode.addListener(listener);
+        } catch (e) {
+          throw Exception("unable to listen at address: $e");
+        }
+        return User(this._username, actualId);
+      }()
+          .then(
+        (user) {
+          context.read<SessionBloc>().add(Initiate(user));
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            HomeScreen.routeName,
+            (route) => false,
+          );
+        },
+        onError: (error, stackTrace) {
+          print(error);
+          print(stackTrace);
+        },
+      ).whenComplete(
+        () {
+          setState(() {
+            _isLoading = false;
+          });
+        },
+      );
+    }
   }
 }

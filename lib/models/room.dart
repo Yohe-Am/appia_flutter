@@ -10,11 +10,15 @@ enum RoomType { personalChat }
 
 @JsonSerializable()
 class Room {
+  final String id;
   final List<User> users;
   final RoomType type;
-  final List<RoomEntry> entries;
 
-  const Room(this.type, this.users, this.entries);
+  const Room(
+    this.id,
+    this.type,
+    this.users,
+  );
 
   Map<String, dynamic> toJson() {
     return _$RoomToJson(this);

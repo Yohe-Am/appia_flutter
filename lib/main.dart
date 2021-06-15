@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:appia/blocs/screens/search.dart';
 import 'package:appia/blocs/session.dart';
+import 'package:appia/repository/room_reporistory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'blocs/p2p/p2p.dart';
+import 'blocs/room/room_bloc.dart';
 import 'p2p/namester_client.dart';
 import 'p2p/p2p.dart';
 import 'p2p/transports/transports.dart';
@@ -58,6 +60,9 @@ class MyApp extends StatelessWidget {
               tports: [WsTransport()],
             ),
           ),
+          RepositoryProvider(
+            create: (context) => RoomRepository(),
+          ),
         ],
         // then come the blocs
         child: MultiBlocProvider(
@@ -65,7 +70,10 @@ class MyApp extends StatelessWidget {
             BlocProvider(create: (context) => P2PBloc(context.read<P2PNode>())),
             BlocProvider(create: (context) => SessionBloc()),
             BlocProvider(
-                create: (context) => SearchScreenBloc(context.read<P2PBloc>()))
+                create: (context) => SearchScreenBloc(context.read<P2PBloc>())),
+            BlocProvider(
+                create: (context) =>
+                    RoomBloc(context.read<RoomRepository>())..add(LoadRooms())),
           ],
           child: MaterialApp(
             title: 'Appia',

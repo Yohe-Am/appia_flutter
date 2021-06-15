@@ -1,8 +1,5 @@
-import 'package:appia/blocs/room/room_bloc.dart';
-import 'package:appia/blocs/message/message_bloc.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:appia/models/models.dart';
 
@@ -11,9 +8,6 @@ class ChatRoom extends StatelessWidget {
   ChatRoom(this.room);
   static const routeName = 'ChatRoom';
   final myController = TextEditingController();
-
-  final messageBloc = MessageBloc();
-  final roomBloc = RoomBloc();
 
   @override
   Widget build(BuildContext context) {

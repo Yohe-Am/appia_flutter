@@ -12,9 +12,9 @@ abstract class P2PBlocEvent {
   const P2PBlocEvent();
 }
 
-class ConnectToPeer extends P2PBlocEvent {
-  final String id;
-  const ConnectToPeer(this.id);
+class AddConnection extends P2PBlocEvent {
+  final AppiaConnection conn;
+  const AddConnection(this.conn);
 }
 
 class PeerDisconncted extends P2PBlocEvent {
@@ -49,9 +49,8 @@ class P2PBloc extends Bloc<P2PBlocEvent, P2PBlocState> {
 
   @override
   Stream<P2PBlocState> mapEventToState(P2PBlocEvent event) async* {
-    if (event is ConnectToPeer) {
-      final conn = await node.connectTo(event.id);
-      yield* _addConnectionToState(state, conn);
+    if (event is AddConnection) {
+      yield* _addConnectionToState(state, event.conn);
     } else if (event is IncomingPeerConnection) {
       yield* _addConnectionToState(state, event.connection);
     } else if (event is PeerDisconncted) {
