@@ -68,11 +68,11 @@ class P2PBloc extends Bloc<P2PBlocEvent, P2PBlocState> {
     // listen for disconenction
     bloc.stream.listen((event) {
       if (event == ConnectionState.Closed) {
-        add(PeerDisconncted(connection.id));
+        add(PeerDisconncted(connection.user.id));
       }
     });
     final connections = state.connections;
-    connections[connection.id] = bloc;
+    connections[connection.user.id] = bloc;
     yield P2PBlocState(connections);
   }
 

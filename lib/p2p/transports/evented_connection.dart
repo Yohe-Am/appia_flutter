@@ -148,7 +148,7 @@ class EventedConnection<C extends AbstractConnection>
     if (responseEvent == null) responseEvent = requestEvent;
     if (timeout == null) timeout = Duration(seconds: 3);
 
-    await this.emit(EventMessage(requestEvent, message));
+    await this.emitEvent(EventMessage(requestEvent, message));
     return this
         .stream
         .firstWhere((msg) => msg.event == responseEvent)

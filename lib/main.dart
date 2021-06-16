@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:appia/blocs/screens/search.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'blocs/p2p/p2p.dart';
 import 'blocs/room/room_bloc.dart';
+import 'models/models.dart';
 import 'p2p/namester_client.dart';
 import 'p2p/p2p.dart';
 import 'p2p/transports/transports.dart';
@@ -34,6 +36,8 @@ void main() {
               ))
           .forEach((conn) {
         print("server got connection from ${conn.connection.peerAddress}");
+        conn.sendRequest(
+            "handshake", jsonEncode(User("echo", "aid:echo").toJson()));
         conn.setListener(
           "echo",
           (connection, data) =>
@@ -56,6 +60,7 @@ class MyApp extends StatelessWidget {
         providers: [
           RepositoryProvider(
             create: (context) => P2PNode(
+              User("placeholder", "placeholder"),
               HttpNamesterProxy(Uri.parse("PLACEHODLER")),
               tports: [WsTransport()],
             ),

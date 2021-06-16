@@ -42,7 +42,13 @@ class Results extends SearchScreenState {
 class SearchScreenBloc extends Bloc<SearchScreenEvent, SearchScreenState> {
   P2PBloc _p2pBloc;
   SearchScreenBloc(this._p2pBloc) : super(Initial());
-
+  static final UserEntry echoUser = UserEntry(
+    "echo",
+    "aid:echo",
+    WsPeerAddress(
+      Uri.parse("ws://127.0.0.1:8088"),
+    ),
+  );
   @override
   Stream<SearchScreenState> mapEventToState(SearchScreenEvent event) async* {
     if (event is SearchString) {
@@ -50,7 +56,9 @@ class SearchScreenBloc extends Bloc<SearchScreenEvent, SearchScreenState> {
       try {
         final result =
             await _p2pBloc.node.namester.getEntryForUsername(event.string);
-        yield result != null ? Results([result]) : Results([]);
+        yield result != null
+            ? Results([result, echoUser])
+            : Results([echoUser]);
       } catch (e) {
         yield ErrorTalkingWithNs(e);
       }
