@@ -24,11 +24,11 @@ class _SetupScreenState extends State<SetupScreen> {
   String _username = "v";
   String _id = "gnirtsmodnaramai";
   // todo: replace by current ip address
-  InternetAddress _listeningHost = InternetAddress("192.168.8.102");
-  // InternetAddress _listeningHost = InternetAddress("192.168.73.172");
+  // InternetAddress _listeningHost = InternetAddress("192.168.8.102");
+  InternetAddress _listeningHost = InternetAddress("192.168.12.77");
   int _listeningPort = 8080;
   // Uri _namesterAddress = Uri.parse("http://192.168.73.145:3000");
-  Uri _namesterAddress = Uri.parse("http://192.168.8.101:3000");
+  Uri _namesterAddress = Uri.parse("http://192.168.12.1:3000");
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;

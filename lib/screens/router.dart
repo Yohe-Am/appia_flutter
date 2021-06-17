@@ -1,5 +1,4 @@
 import 'package:appia/blocs/p2p/p2p.dart';
-import 'package:appia/blocs/rooms.dart';
 import 'package:appia/blocs/screens/room/room.dart';
 import 'package:appia/blocs/screens/userDetail.dart';
 import 'package:appia/models/models.dart';
@@ -8,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:namester/namester.dart';
 
 import 'screens.dart';
-import 'userDetail.dart';
 
 Route generateRoute(RouteSettings settings) {
   if (settings.name == HomeScreen.routeName)

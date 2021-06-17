@@ -43,6 +43,19 @@ void main() {
           (connection, data) =>
               connection.emitEvent(EventMessage("echo", data)),
         );
+        var ctr = 99;
+        conn.setListener(
+          TextMessage.EVENT_NAME,
+          (connection, data) => connection.emitEvent(EventMessage(
+              TextMessage.EVENT_NAME,
+              TextMessage(
+                "otoreeteryan feteeshism",
+                authorId: "aid:echo",
+                authorUsername: "The Child",
+                id: ctr++,
+                timestamp: DateTime.now(),
+              ))),
+        );
       });
     } catch (err) {
       print("err seting up dumb server: $err");
