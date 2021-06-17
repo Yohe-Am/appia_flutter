@@ -19,7 +19,7 @@ class EventMessage<T> {
   Map<String, dynamic> toJson() => {"event": event, "data": data};
 }
 
-/// A DECORATOR over AbstractConnection that provides Socket IO kinda messaging.
+/// A ADAPTER over AbstractConnection that provides Socket IO kinda messaging.
 class EventedConnection<C extends AbstractConnection>
     extends AbstractConnection {
   final Map<String, void Function(EventedConnection<C> socket, dynamic data)>

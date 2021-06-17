@@ -50,9 +50,9 @@ class P2PBloc extends Bloc<P2PBlocEvent, P2PBlocState> {
   @override
   Stream<P2PBlocState> mapEventToState(P2PBlocEvent event) async* {
     if (event is AddConnection) {
-      yield* _addConnectionToState(state, event.conn);
+      yield* _addConnectionToState(state, event.conn, true);
     } else if (event is IncomingPeerConnection) {
-      yield* _addConnectionToState(state, event.connection);
+      yield* _addConnectionToState(state, event.connection, false);
     } else if (event is PeerDisconncted) {
       final connections = state.connections;
       connections.remove(event.id);
@@ -61,10 +61,9 @@ class P2PBloc extends Bloc<P2PBlocEvent, P2PBlocState> {
   }
 
   Stream<P2PBlocState> _addConnectionToState(
-    P2PBlocState state,
-    AppiaConnection connection,
-  ) async* {
-    final bloc = ConnectionBloc(connection.connection);
+      P2PBlocState state, AppiaConnection connection, bool reconnect) async* {
+    final bloc = ConnectionBloc(connection.connection, connection.user,
+        reconnect: reconnect);
     // listen for disconenction
     bloc.stream.listen((event) {
       if (event == ConnectionState.Closed) {

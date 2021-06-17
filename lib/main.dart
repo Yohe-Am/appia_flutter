@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:appia/blocs/screens/search.dart';
 import 'package:appia/blocs/session.dart';
-import 'package:appia/repository/room_reporistory.dart';
+import 'package:appia/repository/room_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'blocs/p2p/p2p.dart';
-import 'blocs/room/room_bloc.dart';
+import 'blocs/rooms.dart';
 import 'models/models.dart';
 import 'p2p/namester_client.dart';
 import 'p2p/p2p.dart';
@@ -77,8 +77,8 @@ class MyApp extends StatelessWidget {
             BlocProvider(
                 create: (context) => SearchScreenBloc(context.read<P2PBloc>())),
             BlocProvider(
-                create: (context) =>
-                    RoomBloc(context.read<RoomRepository>())..add(LoadRooms())),
+                create: (context) => RoomsBloc(context.read<RoomRepository>())
+                  ..add(LoadRooms())),
           ],
           child: MaterialApp(
             title: 'Appia',

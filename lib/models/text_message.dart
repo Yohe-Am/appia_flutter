@@ -6,6 +6,8 @@ part 'text_message.g.dart';
 
 @JsonSerializable()
 class TextMessage extends Message {
+  static const String EVENT_NAME = "appia.textMessage";
+
   final String text;
 
   const TextMessage(this.text,

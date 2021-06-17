@@ -1,3 +1,4 @@
+import 'package:appia/models/models.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:appia/p2p/transports/transports.dart';
 
@@ -45,12 +46,14 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ConnectionState> {
   late final EventedConnection eventedConnection;
   bool reconnect;
   Duration reconnectionDuration;
+  User user;
 
   /// The dialer is responsible for reconnection.
   /// You can still add a Reconnect event from elsewhere to
   /// override this and enable auto reconnection.
   ConnectionBloc(
-    AbstractConnection connection, {
+    AbstractConnection connection,
+    this.user, {
     this.reconnect = false,
     this.reconnectionDuration = const Duration(seconds: 1),
   }) : super(ConnectionState.Connected) {

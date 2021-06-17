@@ -9,10 +9,12 @@ part 'room.g.dart';
 enum RoomType { personalChat }
 
 @JsonSerializable()
+// This is more of a description.
 class Room {
   final String id;
   final List<User> users;
   final RoomType type;
+  // final DateTime creationDate;
 
   const Room(
     this.id,

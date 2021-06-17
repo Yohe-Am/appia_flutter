@@ -1,8 +1,14 @@
+import 'package:appia/blocs/session.dart';
+import 'package:appia/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:appia/blocs/room/room_bloc.dart';
 
+import 'package:appia/blocs/rooms.dart';
+import 'package:appia/blocs/p2p/p2p.dart';
+import 'package:appia/blocs/p2p/connection_bloc.dart' as c_bloc;
+
+import 'room.dart';
 import 'search.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,55 +21,119 @@ class _HomeScreenState extends State<HomeScreen> {
   // FIXME: ??
   @override
   Widget build(BuildContext context) {
+    final currentUser =
+        (context.read<SessionBloc>().state as ActiveSession).user;
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Appia"),
-        // TODO: display for listener status
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed(SearchScreen.routeName);
-            },
-            icon: Icon(Icons.search),
-          ),
-          PopupMenuButton<int>(
-              onSelected: (item) => (context, item) {},
-              itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 0,
-                      child: Text('Settings'),
-                    ),
-                    PopupMenuItem(
-                      value: 1,
-                      child: Text('Blocked List'),
-                    ),
-                    PopupMenuItem(
-                      value: 1,
-                      child: Text('Log out'),
-                    ),
-                  ]),
-        ],
-      ),
-      body: BlocBuilder<RoomBloc, RoomState>(
-        builder: (_, state) {
-          if (state is RoomsLoadSuccess) {
-            final chats = state.rooms;
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.85,
-              width: MediaQuery.of(context).size.width,
-              padding: EdgeInsets.all(20),
-              child: ListView.builder(
-                itemCount: chats.length,
-                itemBuilder: (context, idx) => ListTile(
-                  title: Text(chats[idx].users.toString()),
-                ),
-              ),
-            );
-          }
-          return Center(child: CircularProgressIndicator());
-        },
-      ),
-    );
+        appBar: AppBar(
+          title: Text("Appia"),
+          // TODO: display for listener status
+          actions: [
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed(SearchScreen.routeName);
+              },
+              icon: Icon(Icons.search),
+            ),
+            PopupMenuButton<int>(
+                onSelected: (item) => (context, item) {},
+                itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 0,
+                        child: Text('Settings'),
+                      ),
+                      PopupMenuItem(
+                        value: 1,
+                        child: Text('Blocked List'),
+                      ),
+                      PopupMenuItem(
+                        value: 1,
+                        child: Text('Log out'),
+                      ),
+                    ]),
+          ],
+        ),
+        body: Column(
+          children: <Widget>[
+            BlocBuilder<RoomsBloc, RoomState>(
+              builder: (context, state) {
+                if (state is RoomsLoadSuccess) {
+                  final rooms = state.rooms;
+                  final roomKeys = state.rooms.keys;
+                  return Container(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      width: MediaQuery.of(context).size.width,
+                      padding: EdgeInsets.all(20),
+                      child: rooms.isNotEmpty
+                          ? ListView.builder(
+                              itemCount: rooms.length,
+                              itemBuilder: (context, index) {
+                                final otherUser =
+                                    rooms[roomKeys.elementAt(index)]!
+                                        .users
+                                        .where((u) => u.id != currentUser.id)
+                                        .first;
+                                return ListTile(
+                                  title: Text(otherUser.username),
+                                  subtitle: Text(otherUser.id),
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      RoomScreen.routeName,
+                                      arguments: Room(
+                                        otherUser.id,
+                                        RoomType.personalChat,
+                                        [
+                                          otherUser,
+                                          currentUser,
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            )
+                          : Center(
+                              child: const Text("No Rooms"),
+                            ));
+                }
+                return Center(child: CircularProgressIndicator());
+              },
+            ),
+            BlocBuilder<P2PBloc, P2PBlocState>(
+              builder: (context, state) => state.connections.isNotEmpty
+                  ? ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: state.connections.length,
+                      itemBuilder: (context, index) {
+                        final item = state.connections[
+                            state.connections.keys.elementAt(index)]!;
+                        return ListTile(
+                          title: Text(item.user.username),
+                          subtitle: Text(item.user.id),
+                          trailing: item.state ==
+                                  c_bloc.ConnectionState.Connected
+                              ? const Text("Connected")
+                              : item.state == c_bloc.ConnectionState.Connecting
+                                  ? const Text("Connecting")
+                                  : const Text("Closed"),
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              RoomScreen.routeName,
+                              arguments: Room(
+                                  item.user.id, RoomType.personalChat, [
+                                item.user,
+                                context.read<P2PBloc>().node.self
+                              ]),
+                            );
+                          },
+                        );
+                      },
+                    )
+                  : Center(child: const Text("No Peers")),
+            ),
+          ],
+        ));
   }
 }
 /* 

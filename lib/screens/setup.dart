@@ -1,16 +1,17 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+// for the `read` method on BuildContext
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:appia/blocs/session.dart';
 import 'package:appia/models/models.dart';
 import 'package:appia/p2p/namester_client.dart';
 import 'package:appia/p2p/p2p.dart';
 import 'package:appia/p2p/transports/transports.dart';
-import 'package:appia/screens/home.dart';
-import 'package:appia/screens/logo.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-// for the `read` method on BuildContext
-import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'home.dart';
 
 class SetupScreen extends StatefulWidget {
   static const String routeName = "setup";
@@ -23,11 +24,11 @@ class _SetupScreenState extends State<SetupScreen> {
   String _username = "v";
   String _id = "gnirtsmodnaramai";
   // todo: replace by current ip address
-  // InternetAddress _listeningHost = InternetAddress("192.168.8.104");
-  InternetAddress _listeningHost = InternetAddress("192.168.73.172");
+  InternetAddress _listeningHost = InternetAddress("192.168.8.102");
+  // InternetAddress _listeningHost = InternetAddress("192.168.73.172");
   int _listeningPort = 8080;
-  Uri _namesterAddress = Uri.parse("http://192.168.73.145:3000");
-  // Uri _namesterAddress = Uri.parse("http://192.168.8.101:3000");
+  // Uri _namesterAddress = Uri.parse("http://192.168.73.145:3000");
+  Uri _namesterAddress = Uri.parse("http://192.168.8.101:3000");
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
