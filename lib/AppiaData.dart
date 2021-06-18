@@ -1,13 +1,13 @@
-import 'package:appia/appia.dart';
-import 'package:appia/models/room.dart';
-import 'package:appia/models/user.dart';
-import 'package:appia/models/text_message.dart';
+import 'package:appia/models/models.dart';
 
-class AppiaData {
-  static List<Room> chatRoom = [
-    Room(RoomType.personalChat, [user1, user2], messages_eg1),
-    Room(RoomType.personalChat, [user3, user4], messages_eg1),
-  ];
+class _AppiaData {
+/*   static List<Room> chatRoom = [
+    Room(RoomType.personalChat, [user1, user2]),
+    Room(
+      RoomType.personalChat,
+      [user3, user4],
+    ),
+  ]; */
   static List<TextMessage> messages_eg1 = [
     TextMessage("Hello",
         id: 1,

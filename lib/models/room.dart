@@ -9,12 +9,18 @@ part 'room.g.dart';
 enum RoomType { personalChat }
 
 @JsonSerializable()
+// This is more of a description.
 class Room {
+  final String id;
   final List<User> users;
   final RoomType type;
-  final List<RoomEntry> entries;
+  // final DateTime creationDate;
 
-  const Room(this.type, this.users, this.entries);
+  const Room(
+    this.id,
+    this.type,
+    this.users,
+  );
 
   Map<String, dynamic> toJson() {
     return _$RoomToJson(this);

@@ -1,6 +1,8 @@
 import 'dart:collection';
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:appia/models/models.dart';
 import 'package:namester/namester.dart';
 
 import 'namester_client.dart';
@@ -14,9 +16,9 @@ import 'transports/transports.dart';
 /// in an [`EventedConnection`] the way [`ConnectionBloc`] does
 /// Use it to only attach metadata
 class AppiaConnection {
-  final String id;
+  final User user;
   final AbstractConnection connection;
-  AppiaConnection(this.id, this.connection);
+  AppiaConnection(this.user, this.connection);
   // AppiaConnection.fromRaw(this.id, AbstractConnection rawConn): connection = EventedConnection(rawConn);
 }
 
@@ -26,6 +28,7 @@ class AppiaConnection {
 /// - store/manage ongoing connections, listeners
 /// - an interface for interacting with all connections at once?
 class P2PNode {
+  User self;
   final Map<TransportType, AbstractTransport> transports = new HashMap();
   final Map<ListeningAddress, AbstractListener> listeners = new HashMap();
   final Map<String, AppiaConnection> peerConnections = new HashMap();
@@ -40,6 +43,7 @@ class P2PNode {
   AbstractNamester namester;
 
   P2PNode(
+    this.self,
     this.namester, {
     Iterable<AbstractTransport>? tports,
     Iterable<AbstractListener>? listeners,
@@ -75,45 +79,52 @@ class P2PNode {
     });
   }
 
-  AppiaConnection addConnection(String peerId, AbstractConnection connection) {
-    final appiaConn = AppiaConnection(peerId, connection);
-    this.peerConnections[peerId] = appiaConn;
+  AppiaConnection addConnection(User user, AbstractConnection connection) {
+    final appiaConn = AppiaConnection(user, connection);
+    this.peerConnections[user.id] = appiaConn;
 
     // don't store finished connections
     connection.stream.listen(
       null,
       // TODO: test if onDone is emitted when connection goes down erroneously
       onDone: () {
-        this.peerConnections.remove(peerId);
+        this.peerConnections.remove(user.id);
       },
     );
 
     return appiaConn;
   }
 
-  Future<AppiaConnection> _doHandshake(AbstractConnection connection) async {
+  Future<AppiaConnection> _doHandshake(
+    AbstractConnection connection,
+  ) async {
     // TODO: implement hanshake
-    return this.addConnection((P2PNode._lastAppiaId++).toString(), connection);
+    final eventedConnection = EventedConnection(connection);
+    final response = await eventedConnection.sendRequest(
+      "handshake",
+      jsonEncode(self.toJson()),
+    );
+    final userInfo = User.fromJson(jsonDecode(response.data));
+    return this.addConnection(userInfo, connection);
   }
 
-  static int _lastAppiaId = 1;
   Future<AppiaConnection> connectTo(String id) async {
     if (peerConnections.containsKey(id))
       throw Exception("already connected to peer with id $id");
 
-    final addr = await this.namester.getAddressForId(id);
-    if (addr == null) throw NoNodeFoundForIdException(id);
+    final entry = await this.namester.getEntryForId(id);
+    if (entry == null) throw NoNodeFoundForIdException(id);
 
-    final tport = this.transports[addr.transportType];
+    final tport = this.transports[entry.address.transportType];
     if (tport == null)
-      throw PeerTransportUnsupportedException(addr.transportType);
+      throw PeerTransportUnsupportedException(entry.address.transportType);
 
     try {
-      final connection = await tport.dial(addr);
+      final connection = await tport.dial(entry.address);
       return this._doHandshake(connection);
     } catch (e) {
       throw NetworkException(
-          "unable to connect to user (${id.toString()}) at addr (${addr.toString()}): e.print");
+          "unable to connect to user (${id.toString()}) at addr (${entry.toString()}): e.print");
     }
   }
 

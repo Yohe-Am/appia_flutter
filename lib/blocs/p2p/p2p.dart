@@ -12,9 +12,9 @@ abstract class P2PBlocEvent {
   const P2PBlocEvent();
 }
 
-class ConnectToPeer extends P2PBlocEvent {
-  final String id;
-  const ConnectToPeer(this.id);
+class AddConnection extends P2PBlocEvent {
+  final AppiaConnection conn;
+  const AddConnection(this.conn);
 }
 
 class PeerDisconncted extends P2PBlocEvent {
@@ -49,11 +49,10 @@ class P2PBloc extends Bloc<P2PBlocEvent, P2PBlocState> {
 
   @override
   Stream<P2PBlocState> mapEventToState(P2PBlocEvent event) async* {
-    if (event is ConnectToPeer) {
-      final conn = await node.connectTo(event.id);
-      yield* _addConnectionToState(state, conn);
+    if (event is AddConnection) {
+      yield* _addConnectionToState(state, event.conn, true);
     } else if (event is IncomingPeerConnection) {
-      yield* _addConnectionToState(state, event.connection);
+      yield* _addConnectionToState(state, event.connection, false);
     } else if (event is PeerDisconncted) {
       final connections = state.connections;
       connections.remove(event.id);
@@ -62,18 +61,17 @@ class P2PBloc extends Bloc<P2PBlocEvent, P2PBlocState> {
   }
 
   Stream<P2PBlocState> _addConnectionToState(
-    P2PBlocState state,
-    AppiaConnection connection,
-  ) async* {
-    final bloc = ConnectionBloc(connection.connection);
+      P2PBlocState state, AppiaConnection connection, bool reconnect) async* {
+    final bloc = ConnectionBloc(connection.connection, connection.user,
+        reconnect: reconnect);
     // listen for disconenction
     bloc.stream.listen((event) {
       if (event == ConnectionState.Closed) {
-        add(PeerDisconncted(connection.id));
+        add(PeerDisconncted(connection.user.id));
       }
     });
     final connections = state.connections;
-    connections[connection.id] = bloc;
+    connections[connection.user.id] = bloc;
     yield P2PBlocState(connections);
   }
 

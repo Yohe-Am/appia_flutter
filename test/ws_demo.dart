@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:appia/blocs/p2p/connection_bloc.dart';
+import 'package:appia/models/models.dart';
 import 'package:appia/p2p/transports/transports.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -60,7 +61,8 @@ class DemoConnectionCubit extends Cubit<DemoConnectionState> {
           "Incoming connection from ${conn.peerAddress.toString()} rejected.");
       return;
     }
-    this.connBloc = ConnectionBloc(conn, reconnect: true);
+    this.connBloc =
+        ConnectionBloc(conn, User("testUser", "aid:tUser"), reconnect: true);
     this.connBloc!.eventedConnection.stream.listen((msg) {
       msgsCubit.addMessage("incoming " + jsonEncode(msg.toJson()));
     }, onError: (e) {

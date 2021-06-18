@@ -13,7 +13,8 @@ TextMessage _$TextMessageFromJson(Map<String, dynamic> json) {
       id: $checkedConvert(json, 'id', (v) => v as int),
       authorId: $checkedConvert(json, 'authorId', (v) => v),
       authorUsername: $checkedConvert(json, 'authorUsername', (v) => v),
-      timestamp: $checkedConvert(json, 'timestamp', (v) => v),
+      timestamp:
+          $checkedConvert(json, 'timestamp', (v) => DateTime.tryParse(v)),
       forwadedFromId:
           $checkedConvert(json, 'forwadedFromId', (v) => v as String?),
       forwardedFromUsername:

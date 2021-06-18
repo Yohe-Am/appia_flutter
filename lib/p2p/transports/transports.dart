@@ -141,4 +141,6 @@ class CloseReason {
   final CloseCode? code;
   final String? message;
   const CloseReason({this.code, this.message});
+  @override
+  String toString() => '{ "code": $code, "message": $message }';
 }

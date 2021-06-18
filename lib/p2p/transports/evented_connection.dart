@@ -19,7 +19,7 @@ class EventMessage<T> {
   Map<String, dynamic> toJson() => {"event": event, "data": data};
 }
 
-/// A DECORATOR over AbstractConnection that provides Socket IO kinda messaging.
+/// A ADAPTER over AbstractConnection that provides Socket IO kinda messaging.
 class EventedConnection<C extends AbstractConnection>
     extends AbstractConnection {
   final Map<String, void Function(EventedConnection<C> socket, dynamic data)>
@@ -148,7 +148,7 @@ class EventedConnection<C extends AbstractConnection>
     if (responseEvent == null) responseEvent = requestEvent;
     if (timeout == null) timeout = Duration(seconds: 3);
 
-    await this.emit(EventMessage(requestEvent, message));
+    await this.emitEvent(EventMessage(requestEvent, message));
     return this
         .stream
         .firstWhere((msg) => msg.event == responseEvent)

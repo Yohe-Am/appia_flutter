@@ -80,7 +80,10 @@ class NamesterServer {
   ShelfRunContext? context;
   // final Map<String, HttpResponse Function(HttpRequest)> handlers;
 
-  NamesterServer();
+  NamesterServer() {
+    addUserEntry(UserEntry(
+        'echo', 'aid:echo', WsPeerAddress(Uri.parse('ws://127.0.0.1:8088'))));
+  }
 
   /// Can be configured with environment variables:
   ///
